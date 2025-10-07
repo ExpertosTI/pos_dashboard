@@ -373,19 +373,30 @@ class PosOrder(models.Model):
         
         # Filtrar líneas excluyendo productos de "Anticipo"
         # Lista de palabras clave que identifican anticipos
-        anticipo_keywords = ['anticipo', 'anticipo (pdv)', 'advance', 'deposit']
+        # Usar coincidencia exacta para evitar filtrar productos incorrectos
         
         def is_not_anticipo(line):
             """Verifica si una línea NO es un anticipo"""
             if not line.product_id:
                 return True
             
-            product_name = line.product_id.display_name.lower()
-            # Verificar si contiene alguna palabra clave de anticipo
-            for keyword in anticipo_keywords:
-                if keyword in product_name:
-                    _logger.info(f"Anticipo filtrado: {line.product_id.display_name} - Monto: {line.price_subtotal_incl}")
+            product_name = line.product_id.display_name.lower().strip()
+            
+            # Lista de nombres exactos o patrones específicos de anticipos
+            anticipo_patterns = [
+                'anticipo (pdv)',
+                'anticipo',
+                'advance payment',
+                'deposit',
+                'down payment'
+            ]
+            
+            # Verificar coincidencia exacta o si empieza con "anticipo"
+            for pattern in anticipo_patterns:
+                if product_name == pattern or product_name.startswith('anticipo '):
+                    _logger.info(f"✓ Anticipo filtrado: '{line.product_id.display_name}' - Monto: {line.price_subtotal_incl:.2f}")
                     return False
+            
             return True
         
         lines = all_lines.filtered(is_not_anticipo)
@@ -416,10 +427,11 @@ class PosOrder(models.Model):
                 continue
             
             # Doble verificación: asegurar que no sea un anticipo
-            product_name_lower = product.display_name.lower()
-            is_anticipo = any(keyword in product_name_lower for keyword in anticipo_keywords)
+            product_name_lower = product.display_name.lower().strip()
+            anticipo_patterns = ['anticipo (pdv)', 'anticipo', 'advance payment', 'deposit', 'down payment']
+            is_anticipo = any(product_name_lower == pattern or product_name_lower.startswith('anticipo ') for pattern in anticipo_patterns)
             if is_anticipo:
-                _logger.warning(f"ALERTA: Anticipo detectado en loop de cálculo: {product.display_name}")
+                _logger.warning(f"⚠️ ALERTA: Anticipo detectado en loop de cálculo: '{product.display_name}' - Se omite del cálculo")
                 continue
                 
             product_id = product.id
@@ -450,7 +462,14 @@ class PosOrder(models.Model):
             if profit > 1000:  # Log solo ganancias significativas
                 _logger.info(f"Producto: {product.display_name} | Venta: {line.price_subtotal_incl:.2f} | Costo: {cost:.2f} | Ganancia: {profit:.2f}")
         
-        _logger.info(f"Ganancia total calculada (sin anticipos): {total_profit:.2f}")
+        _logger.info(f"═══════════════════════════════════════════════════")
+        _logger.info(f"📊 RESUMEN DE CÁLCULOS (SIN ANTICIPOS)")
+        _logger.info(f"═══════════════════════════════════════════════════")
+        _logger.info(f"💰 Venta Total: {total_amount:.2f}")
+        _logger.info(f"📦 Total Artículos: {total_quantity:.0f}")
+        _logger.info(f"💵 Ganancia Total: {total_profit:.2f}")
+        _logger.info(f"📋 Productos únicos: {len(product_totals)}")
+        _logger.info(f"═══════════════════════════════════════════════════")
         
         # Producto más vendido
         top_product_name = _('N/A')
