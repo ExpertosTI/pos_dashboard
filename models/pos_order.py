@@ -414,6 +414,13 @@ class PosOrder(models.Model):
             product = line.product_id
             if not product:
                 continue
+            
+            # Doble verificación: asegurar que no sea un anticipo
+            product_name_lower = product.display_name.lower()
+            is_anticipo = any(keyword in product_name_lower for keyword in anticipo_keywords)
+            if is_anticipo:
+                _logger.warning(f"ALERTA: Anticipo detectado en loop de cálculo: {product.display_name}")
+                continue
                 
             product_id = product.id
             
@@ -438,6 +445,10 @@ class PosOrder(models.Model):
             # Ganancia = Precio de venta - Costo
             profit = line.price_subtotal_incl - cost
             total_profit += profit
+            
+            # Log detallado para debugging
+            if profit > 1000:  # Log solo ganancias significativas
+                _logger.info(f"Producto: {product.display_name} | Venta: {line.price_subtotal_incl:.2f} | Costo: {cost:.2f} | Ganancia: {profit:.2f}")
         
         _logger.info(f"Ganancia total calculada (sin anticipos): {total_profit:.2f}")
         

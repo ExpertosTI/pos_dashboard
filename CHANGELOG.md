@@ -5,6 +5,17 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [18.0.1.0.3] - 2025-01-07
+
+### Corregido
+- Doble verificación en loop de cálculo para garantizar exclusión de anticipos
+- Alerta de warning si un anticipo pasa el primer filtro
+- Logging detallado de productos con ganancias significativas (>1000)
+
+### Mejorado
+- Validación adicional en cada iteración del loop de productos
+- Logging de cada producto con ganancia alta para debugging
+
 ## [18.0.1.0.2] - 2025-01-07
 
 ### Corregido
