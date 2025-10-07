@@ -5,6 +5,22 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [18.0.1.0.2] - 2025-01-07
+
+### Corregido
+- Filtro mejorado para detectar específicamente "Anticipo (PdV)"
+- Logging detallado de cada anticipo filtrado con su monto
+- Verificación de ganancias totales sin anticipos
+
+### Mejorado
+- Función `is_not_anticipo()` más robusta con múltiples keywords
+- Keywords adicionales: 'anticipo', 'anticipo (pdv)', 'advance', 'deposit'
+- Log de cantidad de anticipos excluidos
+
+### Técnico
+- Logging individual de cada anticipo filtrado
+- Logging del total de ganancias calculadas sin anticipos
+
 ## [18.0.1.0.1] - 2025-01-07
 
 ### Añadido

@@ -372,13 +372,25 @@ class PosOrder(models.Model):
         all_lines = orders.mapped('lines')
         
         # Filtrar líneas excluyendo productos de "Anticipo"
-        # Buscar productos que contengan "anticipo" en su nombre (case-insensitive)
-        lines = all_lines.filtered(
-            lambda line: line.product_id and 
-            'anticipo' not in line.product_id.display_name.lower()
-        )
+        # Lista de palabras clave que identifican anticipos
+        anticipo_keywords = ['anticipo', 'anticipo (pdv)', 'advance', 'deposit']
         
-        _logger.info(f"Total lines: {len(all_lines)}, Filtered lines (sin anticipo): {len(lines)}")
+        def is_not_anticipo(line):
+            """Verifica si una línea NO es un anticipo"""
+            if not line.product_id:
+                return True
+            
+            product_name = line.product_id.display_name.lower()
+            # Verificar si contiene alguna palabra clave de anticipo
+            for keyword in anticipo_keywords:
+                if keyword in product_name:
+                    _logger.info(f"Anticipo filtrado: {line.product_id.display_name} - Monto: {line.price_subtotal_incl}")
+                    return False
+            return True
+        
+        lines = all_lines.filtered(is_not_anticipo)
+        
+        _logger.info(f"Total lines: {len(all_lines)}, Filtered lines (sin anticipo): {len(lines)}, Anticipos excluidos: {len(all_lines) - len(lines)}")
         
         # Totales básicos (excluyendo anticipos)
         total_quantity = sum(lines.mapped('qty'))
@@ -426,6 +438,8 @@ class PosOrder(models.Model):
             # Ganancia = Precio de venta - Costo
             profit = line.price_subtotal_incl - cost
             total_profit += profit
+        
+        _logger.info(f"Ganancia total calculada (sin anticipos): {total_profit:.2f}")
         
         # Producto más vendido
         top_product_name = _('N/A')
