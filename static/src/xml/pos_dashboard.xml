@@ -157,7 +157,7 @@
         </div>
         <div class="row metrics-section" style="margin: 20px 0;">
             <div class="col-12">
-                <div class="summary-grid-four">
+                <div class="summary-grid-five">
                     <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                         <span>💰 VENTA TOTAL</span>
                         <strong t-esc="formatCurrency(state.detailed_report.summary.total_amount || 0)"/>
@@ -171,8 +171,9 @@
                         <div class="top-product-content">
                             <t t-if="state.detailed_report.summary.top_product_image">
                                 <img class="top-product-image" 
-                                     t-att-src="'data:image/png;base64,' + state.detailed_report.summary.top_product_image"
-                                     alt="Producto"/>
+                                     t-att-src="'data:image/jpeg;base64,' + state.detailed_report.summary.top_product_image"
+                                     alt="Producto"
+                                     onerror="this.onerror=null; this.parentElement.innerHTML='&lt;div class=&quot;top-product-placeholder&quot;&gt;📦&lt;/div&gt;';"/>
                             </t>
                             <t t-else="">
                                 <div class="top-product-placeholder">📦</div>
@@ -181,6 +182,26 @@
                                 <strong t-esc="state.detailed_report.summary.top_product_name || 'N/A'"/>
                                 <small style="display: block; margin-top: 5px; font-size: 0.8em;">
                                     <t t-esc="formatNumber(state.detailed_report.summary.top_product_qty || 0, 0)"/> unidades
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                        <span>💎 PRODUCTO + RENTABLE</span>
+                        <div class="top-product-content">
+                            <t t-if="state.detailed_report.summary.top_profit_product_image">
+                                <img class="top-product-image" 
+                                     t-att-src="'data:image/jpeg;base64,' + state.detailed_report.summary.top_profit_product_image"
+                                     alt="Producto"
+                                     onerror="this.onerror=null; this.parentElement.innerHTML='&lt;div class=&quot;top-product-placeholder&quot;&gt;💎&lt;/div&gt;';"/>
+                            </t>
+                            <t t-else="">
+                                <div class="top-product-placeholder">💎</div>
+                            </t>
+                            <div class="top-product-info">
+                                <strong t-esc="state.detailed_report.summary.top_profit_product_name || 'N/A'"/>
+                                <small style="display: block; margin-top: 5px; font-size: 0.8em;">
+                                    Ganancia: <t t-esc="formatCurrency(state.detailed_report.summary.top_profit_amount || 0)"/>
                                 </small>
                             </div>
                         </div>

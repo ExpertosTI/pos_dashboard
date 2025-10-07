@@ -5,6 +5,62 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [18.0.1.2.0] - 2025-01-07
+
+### Añadido ✨
+- **Nueva métrica**: 💎 PRODUCTO MÁS RENTABLE
+  - Muestra el producto que genera más ganancias
+  - Incluye imagen del producto
+  - Muestra el monto de ganancia generado
+- Grid de 5 columnas para las métricas principales
+- Gradiente rosa/amarillo para la nueva tarjeta
+
+### Mejorado
+- Dashboard ahora muestra 5 métricas en lugar de 4
+- Cálculo automático del producto más rentable
+- Responsive design para 5 columnas (5 → 2 → 1)
+
+### Técnico
+- `top_profit_product_name`: Nombre del producto más rentable
+- `top_profit_amount`: Ganancia generada
+- `top_profit_product_image`: Imagen del producto
+- Cálculo basado en `amount - cost` por producto
+
+## [18.0.1.1.0] - 2025-01-07
+
+### CAMBIO IMPORTANTE ⚠️
+- **Ventas Totales**: Ahora INCLUYE anticipos (muestra el total real de ventas)
+- **Ganancias Totales**: Ahora EXCLUYE anticipos (solo ganancias de productos reales)
+- **Total de Artículos**: Ahora INCLUYE anticipos (muestra el total real de items)
+
+### Mejorado
+- Separación clara entre cálculos con y sin anticipos
+- Logging detallado indicando qué incluye anticipos y qué no
+- Función `is_anticipo()` centralizada para identificar anticipos
+
+### Técnico
+- `lines_sin_anticipo`: Para cálculo de ganancias
+- `all_lines`: Para cálculo de ventas totales
+- Logging mejorado con indicadores (CON/SIN anticipos)
+
+## [18.0.1.0.5] - 2025-01-07
+
+### Corregido
+- Mejora en manejo de imágenes de productos
+- Logging detallado de imágenes en backend y frontend
+- Soporte para diferentes formatos de imagen (JPEG/PNG)
+
+### Mejorado
+- Console.log en JavaScript para debugging de imágenes
+- Error handling mejorado para imágenes
+- Fallback visual si la imagen no carga
+
+## [18.0.1.0.4] - 2025-01-07
+
+### Corregido
+- Filtro de anticipos con coincidencia exacta
+- Evita filtrar productos que solo contienen la palabra "anticipo"
+
 ## [18.0.1.0.3] - 2025-01-07
 
 ### Corregido

@@ -371,14 +371,11 @@ class PosOrder(models.Model):
         # Calcular totales usando métodos optimizados
         all_lines = orders.mapped('lines')
         
-        # Filtrar líneas excluyendo productos de "Anticipo"
-        # Lista de palabras clave que identifican anticipos
-        # Usar coincidencia exacta para evitar filtrar productos incorrectos
-        
-        def is_not_anticipo(line):
-            """Verifica si una línea NO es un anticipo"""
+        # Función para identificar anticipos
+        def is_anticipo(line):
+            """Verifica si una línea ES un anticipo"""
             if not line.product_id:
-                return True
+                return False
             
             product_name = line.product_id.display_name.lower().strip()
             
@@ -394,19 +391,24 @@ class PosOrder(models.Model):
             # Verificar coincidencia exacta o si empieza con "anticipo"
             for pattern in anticipo_patterns:
                 if product_name == pattern or product_name.startswith('anticipo '):
-                    _logger.info(f"✓ Anticipo filtrado: '{line.product_id.display_name}' - Monto: {line.price_subtotal_incl:.2f}")
-                    return False
+                    return True
             
-            return True
+            return False
         
-        lines = all_lines.filtered(is_not_anticipo)
+        # Separar líneas: todas vs sin anticipos
+        lines_sin_anticipo = all_lines.filtered(lambda line: not is_anticipo(line))
+        lines_anticipo = all_lines.filtered(is_anticipo)
         
-        _logger.info(f"Total lines: {len(all_lines)}, Filtered lines (sin anticipo): {len(lines)}, Anticipos excluidos: {len(all_lines) - len(lines)}")
+        # Log de anticipos filtrados
+        for line in lines_anticipo:
+            _logger.info(f"✓ Anticipo identificado: '{line.product_id.display_name}' - Monto: {line.price_subtotal_incl:.2f}")
         
-        # Totales básicos (excluyendo anticipos)
-        total_quantity = sum(lines.mapped('qty'))
-        total_amount = sum(lines.mapped('price_subtotal_incl'))  # Solo líneas sin anticipo
-        tax_amount = sum(line.price_subtotal_incl - line.price_subtotal for line in lines)
+        _logger.info(f"Total lines: {len(all_lines)}, Lines sin anticipo: {len(lines_sin_anticipo)}, Anticipos: {len(lines_anticipo)}")
+        
+        # VENTAS TOTALES: Incluye TODO (con anticipos)
+        total_quantity = sum(all_lines.mapped('qty'))
+        total_amount = sum(all_lines.mapped('price_subtotal_incl'))  # CON anticipos
+        tax_amount = sum(line.price_subtotal_incl - line.price_subtotal for line in all_lines)
         untaxed_amount = total_amount - tax_amount
 
         # Calcular por producto (similar a pos.details.wizard)
@@ -421,17 +423,10 @@ class PosOrder(models.Model):
         
         total_profit = 0.0
         
-        for line in lines:
+        # GANANCIAS: Solo calcular con líneas SIN anticipos
+        for line in lines_sin_anticipo:
             product = line.product_id
             if not product:
-                continue
-            
-            # Doble verificación: asegurar que no sea un anticipo
-            product_name_lower = product.display_name.lower().strip()
-            anticipo_patterns = ['anticipo (pdv)', 'anticipo', 'advance payment', 'deposit', 'down payment']
-            is_anticipo = any(product_name_lower == pattern or product_name_lower.startswith('anticipo ') for pattern in anticipo_patterns)
-            if is_anticipo:
-                _logger.warning(f"⚠️ ALERTA: Anticipo detectado en loop de cálculo: '{product.display_name}' - Se omite del cálculo")
                 continue
                 
             product_id = product.id
@@ -463,22 +458,29 @@ class PosOrder(models.Model):
                 _logger.info(f"Producto: {product.display_name} | Venta: {line.price_subtotal_incl:.2f} | Costo: {cost:.2f} | Ganancia: {profit:.2f}")
         
         _logger.info(f"═══════════════════════════════════════════════════")
-        _logger.info(f"📊 RESUMEN DE CÁLCULOS (SIN ANTICIPOS)")
+        _logger.info(f"📊 RESUMEN DE CÁLCULOS")
         _logger.info(f"═══════════════════════════════════════════════════")
-        _logger.info(f"💰 Venta Total: {total_amount:.2f}")
-        _logger.info(f"📦 Total Artículos: {total_quantity:.0f}")
-        _logger.info(f"💵 Ganancia Total: {total_profit:.2f}")
+        _logger.info(f"💰 Venta Total: {total_amount:.2f} (CON anticipos)")
+        _logger.info(f"📦 Total Artículos: {total_quantity:.0f} (CON anticipos)")
+        _logger.info(f"💵 Ganancia Total: {total_profit:.2f} (SIN anticipos)")
         _logger.info(f"📋 Productos únicos: {len(product_totals)}")
+        _logger.info(f"🔢 Anticipos excluidos de ganancias: {len(lines_anticipo)}")
         _logger.info(f"═══════════════════════════════════════════════════")
         
-        # Producto más vendido
+        # Producto más vendido (por cantidad)
         top_product_name = _('N/A')
         top_product_qty = 0.0
         top_product_image = False
         top_product_id = False
         
+        # Producto con más ganancias
+        top_profit_product_name = _('N/A')
+        top_profit_amount = 0.0
+        top_profit_product_image = False
+        top_profit_product_id = False
+        
         if product_totals:
-            # Encontrar el producto con mayor cantidad
+            # Encontrar el producto con mayor cantidad vendida
             top_product_id, top_data = max(
                 product_totals.items(),
                 key=lambda x: x[1]['quantity']
@@ -488,19 +490,47 @@ class PosOrder(models.Model):
             if top_product_obj:
                 top_product_name = top_product_obj.display_name
                 top_product_qty = top_data['quantity']
-                # Obtener la imagen del producto (image_128 para mejor rendimiento)
-                # La imagen ya viene en base64 desde Odoo
-                if top_product_obj.image_128:
-                    # Convertir bytes a string si es necesario
-                    if isinstance(top_product_obj.image_128, bytes):
-                        top_product_image = base64.b64encode(top_product_obj.image_128).decode('utf-8')
-                    else:
-                        # Ya es string en base64
+                
+                # Obtener la imagen del producto más vendido
+                try:
+                    if top_product_obj.image_128:
                         top_product_image = top_product_obj.image_128
-                else:
+                        if isinstance(top_product_image, bytes):
+                            top_product_image = top_product_image.decode('utf-8')
+                        
+                        _logger.info(f"🖼️ Imagen encontrada para '{top_product_name}' - Tamaño: {len(top_product_image) if top_product_image else 0} chars")
+                    else:
+                        top_product_image = False
+                        _logger.warning(f"⚠️ Producto '{top_product_name}' no tiene imagen configurada")
+                except Exception as e:
+                    _logger.error(f"❌ Error al obtener imagen de '{top_product_name}': {e}")
                     top_product_image = False
                 
-                _logger.info(f"Top product: {top_product_name}, has image: {bool(top_product_image)}")
+                _logger.info(f"🏆 Producto más vendido: '{top_product_name}' - {top_product_qty:.0f} unidades - Imagen: {'✓' if top_product_image else '✗'}")
+            
+            # Encontrar el producto con mayor ganancia
+            top_profit_id, top_profit_data = max(
+                product_totals.items(),
+                key=lambda x: x[1]['amount'] - x[1]['cost']  # Ganancia = Venta - Costo
+            )
+            top_profit_obj = top_profit_data['product_obj']
+            
+            if top_profit_obj:
+                top_profit_product_name = top_profit_obj.display_name
+                top_profit_amount = top_profit_data['amount'] - top_profit_data['cost']
+                top_profit_product_id = top_profit_id
+                
+                # Obtener la imagen del producto con más ganancias
+                try:
+                    if top_profit_obj.image_128:
+                        top_profit_product_image = top_profit_obj.image_128
+                        if isinstance(top_profit_product_image, bytes):
+                            top_profit_product_image = top_profit_product_image.decode('utf-8')
+                except Exception as e:
+                    _logger.error(f"❌ Error al obtener imagen de '{top_profit_product_name}': {e}")
+                    top_profit_product_image = False
+                
+                _logger.info(f"💎 Producto con más ganancias: '{top_profit_product_name}' - Ganancia: {top_profit_amount:.2f} - Imagen: {'✓' if top_profit_product_image else '✗'}")
 
         # Datos de productos ordenados por cantidad (descendente)
         products_data = [
@@ -606,6 +636,10 @@ class PosOrder(models.Model):
                 'top_product_qty': top_product_qty,
                 'top_product_image': top_product_image,
                 'top_product_id': top_product_id,
+                'top_profit_product_name': top_profit_product_name,
+                'top_profit_amount': top_profit_amount,
+                'top_profit_product_image': top_profit_product_image,
+                'top_profit_product_id': top_profit_product_id,
                 'total_profit': total_profit,
                 'orders_count': len(orders),
             },

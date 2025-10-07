@@ -1122,8 +1122,20 @@ h4 .stat-count {
     margin-right: auto;
 }
 
+.summary-grid-five {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 20px;
+    margin-bottom: 20px;
+    padding: 0 10px;
+    max-width: 1600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .summary-grid div,
-.summary-grid-four div {
+.summary-grid-four div,
+.summary-grid-five div {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 16px;
     padding: 24px 20px;
@@ -1137,13 +1149,15 @@ h4 .stat-count {
 }
 
 .summary-grid div:hover,
-.summary-grid-four div:hover {
+.summary-grid-four div:hover,
+.summary-grid-five div:hover {
     transform: translateY(-5px);
     box-shadow: 0 12px 32px rgba(0,0,0,0.2);
 }
 
 .summary-grid span,
-.summary-grid-four span {
+.summary-grid-four span,
+.summary-grid-five span {
     font-size: 13px;
     color: rgba(255,255,255,0.95);
     text-transform: uppercase;
@@ -1153,14 +1167,16 @@ h4 .stat-count {
 }
 
 .summary-grid strong,
-.summary-grid-four strong {
+.summary-grid-four strong,
+.summary-grid-five strong {
     font-size: 28px;
     color: #fff;
     font-weight: 700;
     text-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-.summary-grid-four small {
+.summary-grid-four small,
+.summary-grid-five small {
     color: rgba(255,255,255,0.9);
     font-size: 12px;
     font-weight: 500;
@@ -1273,6 +1289,12 @@ h4 .stat-count {
     }
     
     .summary-grid-four {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        max-width: 100%;
+    }
+    
+    .summary-grid-five {
         grid-template-columns: repeat(2, 1fr);
         gap: 15px;
         max-width: 100%;
@@ -1411,13 +1433,15 @@ h4 .stat-count {
 
 @media (max-width: 480px) {
     .summary-grid,
-    .summary-grid-four {
+    .summary-grid-four,
+    .summary-grid-five {
         grid-template-columns: 1fr;
         gap: 12px;
     }
     
     .summary-grid div,
-    .summary-grid-four div {
+    .summary-grid-four div,
+    .summary-grid-five div {
         padding: 16px;
         min-height: 90px;
     }

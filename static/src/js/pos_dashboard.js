@@ -104,6 +104,17 @@ export class PosDashboard extends Component{
         }
         const data = await this.orm.call('pos.order','get_dynamic_sales_details',[payload])
         this.state.detailed_report = data
+        
+        // Debug: Log de imagen del producto más vendido
+        if (data.summary && data.summary.top_product_image) {
+            console.log('🖼️ Imagen del producto más vendido recibida:', {
+                producto: data.summary.top_product_name,
+                tiene_imagen: !!data.summary.top_product_image,
+                longitud: data.summary.top_product_image ? data.summary.top_product_image.length : 0
+            });
+        } else {
+            console.warn('⚠️ No se recibió imagen del producto más vendido');
+        }
     }
     async applyFilters(){
         await this.loadDetailedReport()
