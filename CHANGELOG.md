@@ -5,6 +5,22 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [18.0.1.0.1] - 2025-01-07
+
+### Añadido
+- Filtro automático para excluir productos de "Anticipo" de los cálculos
+- Logging mejorado para tracking de líneas filtradas
+
+### Mejorado
+- Cálculo de ventas totales ahora excluye anticipos
+- Cálculo de ganancias ahora excluye anticipos
+- Cálculo de cantidad de artículos ahora excluye anticipos
+- Producto más vendido ahora excluye anticipos
+
+### Técnico
+- Filtrado case-insensitive de productos con "anticipo" en el nombre
+- Cálculo de totales basado en líneas filtradas
+
 ## [18.0.1.0.0] - 2025-01-07
 
 ### Añadido

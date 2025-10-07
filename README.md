@@ -1,12 +1,14 @@
 # Dashboard POS Avanzado
 
-**Versión:** 18.0.1.0.0  
+**Versión:** 18.0.1.0.1  
 **Autor:** Adderly Marte - Renace Tech  
 **Licencia:** AGPL-3
 
 ## Descripción
 
 Dashboard avanzado para análisis de ventas en Punto de Venta (POS) con métricas en tiempo real, diseño moderno y responsive.
+
+> **Nota:** Los productos de "Anticipo" son automáticamente excluidos de todos los cálculos de ventas, ganancias y métricas.
 
 ## Características Principales
 
@@ -121,6 +123,7 @@ dashboard_pos/
 - Logging para debugging
 - Manejo de errores robusto
 - Normalización de fechas automática
+- **Filtrado automático de productos "Anticipo"** (case-insensitive)
 
 ### Frontend (JavaScript/OWL)
 - Componente OWL moderno
@@ -180,6 +183,11 @@ Se determina por la mayor cantidad vendida en el período filtrado.
 3. Revisar la consola del navegador por errores
 
 ## Changelog
+
+### v18.0.1.0.1 (2025-01-07)
+- ✅ Filtro automático para excluir productos "Anticipo"
+- ✅ Mejora en cálculos de ventas y ganancias
+- ✅ Logging mejorado para debugging
 
 ### v18.0.1.0.0 (2025-01-07)
 - ✅ Versión inicial para Odoo 18

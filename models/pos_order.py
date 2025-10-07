@@ -369,12 +369,21 @@ class PosOrder(models.Model):
         currency = self.env.company.currency_id
 
         # Calcular totales usando métodos optimizados
-        lines = orders.mapped('lines')
+        all_lines = orders.mapped('lines')
         
-        # Totales básicos
+        # Filtrar líneas excluyendo productos de "Anticipo"
+        # Buscar productos que contengan "anticipo" en su nombre (case-insensitive)
+        lines = all_lines.filtered(
+            lambda line: line.product_id and 
+            'anticipo' not in line.product_id.display_name.lower()
+        )
+        
+        _logger.info(f"Total lines: {len(all_lines)}, Filtered lines (sin anticipo): {len(lines)}")
+        
+        # Totales básicos (excluyendo anticipos)
         total_quantity = sum(lines.mapped('qty'))
-        total_amount = sum(orders.mapped('amount_total'))
-        tax_amount = sum(orders.mapped('amount_tax'))
+        total_amount = sum(lines.mapped('price_subtotal_incl'))  # Solo líneas sin anticipo
+        tax_amount = sum(line.price_subtotal_incl - line.price_subtotal for line in lines)
         untaxed_amount = total_amount - tax_amount
 
         # Calcular por producto (similar a pos.details.wizard)
