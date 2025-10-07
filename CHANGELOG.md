@@ -5,6 +5,30 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [18.0.1.3.0] - 2025-01-07
+
+### CORRECCIÓN CRÍTICA ⚠️
+- **Ventas Totales**: Ahora muestra el total REAL de las órdenes (RD$63,470 en lugar de RD$23,525)
+- **Total Artículos**: Ahora muestra TODAS las unidades vendidas (323 en lugar de 102)
+- **Producto Más Rentable**: Ahora calcula correctamente basado en TODAS las ventas
+
+### Corregido
+- Cálculo de ventas totales usa `sum(orders.mapped('amount_total'))` directamente
+- Producto más rentable ahora considera TODAS las líneas (no solo sin anticipo)
+- Ganancias SOLO excluyen anticipos (como se solicitó)
+- Logging mejorado para verificar cálculos
+
+### Técnico
+- `all_lines`: Para cantidad y monto por producto
+- `is_anticipo_line`: Para excluir solo de ganancias
+- Cálculo de ganancia solo para líneas sin anticipo
+
+## [18.0.1.2.1] - 2025-01-07
+
+### Mejorado
+- Detección de imágenes con fallback múltiple
+- Logging detallado de campos de imagen disponibles
+
 ## [18.0.1.2.0] - 2025-01-07
 
 ### Añadido ✨

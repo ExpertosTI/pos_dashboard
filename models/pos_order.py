@@ -406,10 +406,13 @@ class PosOrder(models.Model):
         _logger.info(f"Total lines: {len(all_lines)}, Lines sin anticipo: {len(lines_sin_anticipo)}, Anticipos: {len(lines_anticipo)}")
         
         # VENTAS TOTALES: Incluye TODO (con anticipos)
+        # Usar el total de las órdenes directamente para mayor precisión
         total_quantity = sum(all_lines.mapped('qty'))
-        total_amount = sum(all_lines.mapped('price_subtotal_incl'))  # CON anticipos
-        tax_amount = sum(line.price_subtotal_incl - line.price_subtotal for line in all_lines)
+        total_amount = sum(orders.mapped('amount_total'))  # Total de órdenes (incluye anticipos)
+        tax_amount = sum(orders.mapped('amount_tax'))
         untaxed_amount = total_amount - tax_amount
+        
+        _logger.info(f"💰 Ventas calculadas: Total={total_amount:.2f}, Tax={tax_amount:.2f}, Cantidad={total_quantity:.0f}")
 
         # Calcular por producto (similar a pos.details.wizard)
         # Usar ID del producto como clave para mejor eficiencia
@@ -423,11 +426,15 @@ class PosOrder(models.Model):
         
         total_profit = 0.0
         
-        # GANANCIAS: Solo calcular con líneas SIN anticipos
-        for line in lines_sin_anticipo:
+        # Procesar TODAS las líneas para totales por producto
+        # Pero solo sumar ganancias de líneas SIN anticipos
+        for line in all_lines:
             product = line.product_id
             if not product:
                 continue
+            
+            # Verificar si es anticipo
+            is_anticipo_line = is_anticipo(line)
                 
             product_id = product.id
             
@@ -435,7 +442,7 @@ class PosOrder(models.Model):
             if not product_totals[product_id]['product_obj']:
                 product_totals[product_id]['product_obj'] = product
             
-            # Cantidad y monto
+            # Cantidad y monto (TODAS las líneas, incluyendo anticipos)
             product_totals[product_id]['quantity'] += line.qty
             product_totals[product_id]['amount'] += line.price_subtotal_incl
             
@@ -444,18 +451,21 @@ class PosOrder(models.Model):
                 discount_value = (line.qty * line.price_unit) * (line.discount / 100.0)
                 product_totals[product_id]['discount'] += discount_value
             
-            # Costo y ganancia
-            # Usa standard_price (costo estándar del producto)
-            cost = (product.standard_price or 0.0) * line.qty
-            product_totals[product_id]['cost'] += cost
-            
-            # Ganancia = Precio de venta - Costo
-            profit = line.price_subtotal_incl - cost
-            total_profit += profit
-            
-            # Log detallado para debugging
-            if profit > 1000:  # Log solo ganancias significativas
-                _logger.info(f"Producto: {product.display_name} | Venta: {line.price_subtotal_incl:.2f} | Costo: {cost:.2f} | Ganancia: {profit:.2f}")
+            # Costo y ganancia (SOLO para líneas sin anticipo)
+            if not is_anticipo_line:
+                cost = (product.standard_price or 0.0) * line.qty
+                product_totals[product_id]['cost'] += cost
+                
+                # Ganancia = Precio de venta - Costo
+                profit = line.price_subtotal_incl - cost
+                total_profit += profit
+                
+                # Log detallado para debugging
+                if profit > 1000:  # Log solo ganancias significativas
+                    _logger.info(f"Producto: {product.display_name} | Venta: {line.price_subtotal_incl:.2f} | Costo: {cost:.2f} | Ganancia: {profit:.2f}")
+            else:
+                # Para anticipos, no calcular ganancia
+                _logger.info(f"⏭️ Anticipo omitido de ganancias: {product.display_name} - Monto: {line.price_subtotal_incl:.2f}")
         
         _logger.info(f"═══════════════════════════════════════════════════")
         _logger.info(f"📊 RESUMEN DE CÁLCULOS")
