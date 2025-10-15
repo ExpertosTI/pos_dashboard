@@ -5,6 +5,24 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [18.0.1.3.1] - 2025-01-15
+
+### Corregido 🐛
+- **Error crítico**: Variable `lines` no definida causaba fallo en cálculo de impuestos (línea 612)
+- **Error crítico**: Variable `lines` no definida en cálculo de descuentos (línea 590)
+- **Error en log**: Variable `lines` no definida en logging de debug (línea 623)
+
+### Mejorado ✨
+- Simplificada lógica de obtención de imágenes de productos
+- Eliminado logging excesivo en obtención de imágenes
+- Removida conversión redundante de bytes a string (Odoo ya devuelve base64)
+- Código más limpio y mantenible para imágenes
+
+### Técnico
+- Uso correcto de `all_lines` en todos los lugares donde se necesita
+- Obtención de imágenes simplificada con operador `or` en cascada
+- Menos logs, más eficiencia
+
 ## [18.0.1.3.0] - 2025-01-07
 
 ### CORRECCIÓN CRÍTICA ⚠️

@@ -501,46 +501,14 @@ class PosOrder(models.Model):
                 top_product_name = top_product_obj.display_name
                 top_product_qty = top_data['quantity']
                 
-                # Obtener la imagen del producto más vendido
-                # Intentar diferentes campos de imagen en orden de prioridad
-                try:
-                    # Verificar si el producto tiene imagen
-                    _logger.info(f"🔍 Buscando imagen para '{top_product_name}' (ID: {top_product_obj.id})")
-                    
-                    # Intentar image_128 primero (más ligero)
-                    if hasattr(top_product_obj, 'image_128') and top_product_obj.image_128:
-                        top_product_image = top_product_obj.image_128
-                        _logger.info(f"✓ Imagen encontrada en image_128")
-                    # Si no, intentar image_256
-                    elif hasattr(top_product_obj, 'image_256') and top_product_obj.image_256:
-                        top_product_image = top_product_obj.image_256
-                        _logger.info(f"✓ Imagen encontrada en image_256")
-                    # Si no, intentar image_512
-                    elif hasattr(top_product_obj, 'image_512') and top_product_obj.image_512:
-                        top_product_image = top_product_obj.image_512
-                        _logger.info(f"✓ Imagen encontrada en image_512")
-                    # Si no, intentar image_1920 (imagen completa)
-                    elif hasattr(top_product_obj, 'image_1920') and top_product_obj.image_1920:
-                        top_product_image = top_product_obj.image_1920
-                        _logger.info(f"✓ Imagen encontrada en image_1920")
-                    else:
-                        top_product_image = False
-                        _logger.warning(f"⚠️ Producto '{top_product_name}' no tiene imagen en ningún campo")
-                        _logger.info(f"   Campos disponibles: {[f for f in dir(top_product_obj) if 'image' in f.lower()]}")
-                    
-                    # Convertir bytes a string si es necesario
-                    if top_product_image and isinstance(top_product_image, bytes):
-                        top_product_image = top_product_image.decode('utf-8')
-                        _logger.info(f"   Imagen convertida de bytes a string")
-                    
-                    if top_product_image:
-                        _logger.info(f"🖼️ Imagen final para '{top_product_name}' - Tamaño: {len(top_product_image)} chars")
-                        
-                except Exception as e:
-                    _logger.error(f"❌ Error al obtener imagen de '{top_product_name}': {e}")
-                    import traceback
-                    _logger.error(traceback.format_exc())
-                    top_product_image = False
+                # Obtener la imagen del producto (Odoo ya devuelve base64)
+                top_product_image = (
+                    top_product_obj.image_128 or 
+                    top_product_obj.image_256 or 
+                    top_product_obj.image_512 or 
+                    top_product_obj.image_1920 or 
+                    False
+                )
                 
                 _logger.info(f"🏆 Producto más vendido: '{top_product_name}' - {top_product_qty:.0f} unidades - Imagen: {'✓' if top_product_image else '✗'}")
             
@@ -556,36 +524,14 @@ class PosOrder(models.Model):
                 top_profit_amount = top_profit_data['amount'] - top_profit_data['cost']
                 top_profit_product_id = top_profit_id
                 
-                # Obtener la imagen del producto con más ganancias
-                try:
-                    _logger.info(f"🔍 Buscando imagen para producto rentable '{top_profit_product_name}' (ID: {top_profit_obj.id})")
-                    
-                    # Intentar diferentes campos de imagen
-                    if hasattr(top_profit_obj, 'image_128') and top_profit_obj.image_128:
-                        top_profit_product_image = top_profit_obj.image_128
-                        _logger.info(f"✓ Imagen encontrada en image_128")
-                    elif hasattr(top_profit_obj, 'image_256') and top_profit_obj.image_256:
-                        top_profit_product_image = top_profit_obj.image_256
-                        _logger.info(f"✓ Imagen encontrada en image_256")
-                    elif hasattr(top_profit_obj, 'image_512') and top_profit_obj.image_512:
-                        top_profit_product_image = top_profit_obj.image_512
-                        _logger.info(f"✓ Imagen encontrada en image_512")
-                    elif hasattr(top_profit_obj, 'image_1920') and top_profit_obj.image_1920:
-                        top_profit_product_image = top_profit_obj.image_1920
-                        _logger.info(f"✓ Imagen encontrada en image_1920")
-                    else:
-                        top_profit_product_image = False
-                        _logger.warning(f"⚠️ Producto rentable '{top_profit_product_name}' no tiene imagen")
-                    
-                    # Convertir bytes a string si es necesario
-                    if top_profit_product_image and isinstance(top_profit_product_image, bytes):
-                        top_profit_product_image = top_profit_product_image.decode('utf-8')
-                        
-                except Exception as e:
-                    _logger.error(f"❌ Error al obtener imagen de '{top_profit_product_name}': {e}")
-                    import traceback
-                    _logger.error(traceback.format_exc())
-                    top_profit_product_image = False
+                # Obtener la imagen del producto (Odoo ya devuelve base64)
+                top_profit_product_image = (
+                    top_profit_obj.image_128 or 
+                    top_profit_obj.image_256 or 
+                    top_profit_obj.image_512 or 
+                    top_profit_obj.image_1920 or 
+                    False
+                )
                 
                 _logger.info(f"💎 Producto con más ganancias: '{top_profit_product_name}' - Ganancia: {top_profit_amount:.2f} - Imagen: {'✓' if top_profit_product_image else '✗'}")
 
@@ -609,7 +555,7 @@ class PosOrder(models.Model):
 
         # Agrupar impuestos (similar a pos.details.wizard)
         tax_groups = defaultdict(lambda: {'base': 0.0, 'tax': 0.0})
-        for line in lines:
+        for line in all_lines:
             tax_amount_line = line.price_subtotal_incl - line.price_subtotal
             if not line.tax_ids_after_fiscal_position:
                 label = _('Exento')
@@ -641,7 +587,7 @@ class PosOrder(models.Model):
                 })
 
         # Descuentos totales
-        discount_lines = lines.filtered(lambda l: l.discount > 0)
+        discount_lines = all_lines.filtered(lambda l: l.discount > 0)
         discount_total = sum(
             (line.qty * line.price_unit) * (line.discount / 100.0)
             for line in discount_lines
@@ -674,7 +620,7 @@ class PosOrder(models.Model):
         # Log para debugging
         _logger.info(
             f"Dashboard data calculated: {len(orders)} orders, "
-            f"{len(lines)} lines, Total: {total_amount:.2f}, "
+            f"{len(all_lines)} lines, Total: {total_amount:.2f}, "
             f"Profit: {total_profit:.2f}"
         )
 
