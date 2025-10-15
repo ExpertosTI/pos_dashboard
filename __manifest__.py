@@ -21,7 +21,7 @@
 ################################################################################
 {
     'name': "Dashboard POS Avanzado",
-    'version': '18.0.1.3.0',
+    'version': '18.0.1.3.1',
     'category': 'Punto de Venta',
     'summary': """Dashboard avanzado para análisis de ventas POS con métricas en tiempo real""",
     'description': """
