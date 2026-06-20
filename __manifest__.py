@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 ################################################################################
 #
-#    Renace Tech
-#    Copyright (C) 2025 Renace Tech (<https://renace.tech>).
-#    Author: Adderly Marte (adderly@renace.tech)
+#    Cybrosys Technologies Pvt. Ltd.
+#    Copyright (C) 2024-TODAY Cybrosys Technologies(<https://www.cybrosys.com>).
+#    Author: Bhagyadev KP (odoo@cybrosys.com)
 #
 #    This program is free software: you can modify
 #    it under the terms of the GNU Affero General Public License (AGPL) as
@@ -20,28 +20,16 @@
 #
 ################################################################################
 {
-    'name': "Dashboard POS Avanzado",
-    'version': '18.0.1.3.0',
-    'category': 'Punto de Venta',
-    'summary': """Dashboard avanzado para análisis de ventas POS con métricas en tiempo real""",
-    'description': """
-        Dashboard POS Avanzado
-        ======================
-        
-        Características principales:
-        - Métricas en tiempo real (Ventas, Artículos, Ganancias)
-        - Producto más vendido con imagen
-        - Filtros dinámicos por fecha y configuración POS
-        - Análisis de vendedores y métodos de pago
-        - Gráficos interactivos de ventas
-        - Diseño responsive y moderno
-        - Integración completa con contabilidad
-    """,
-    'author': 'Adderly Marte - Renace Tech',
+    'name': "Tablero POS",
+    'version': '18.0.1.0.1',
+    'category': 'Point of Sale',
+    'summary': "Tablero detallado para Punto de Venta",
+    'description': "Tablero de POS con métricas, filtros por fechas y gráficos",
+    'author': 'Adderly Marte',
     'company': 'Renace Tech',
-    'maintainer': 'Renace Tech',
+    'maintainer': 'Adderly Marte',
     'website': "https://renace.tech",
-    'depends': ['hr', 'point_of_sale', 'web', 'account'],
+    'depends': ['hr', 'point_of_sale', 'web'],
     'data': [
         'views/pos_order_views.xml'
     ],
@@ -50,12 +38,11 @@
             'dashboard_pos/static/src/xml/pos_dashboard.xml',
             'dashboard_pos/static/src/js/pos_dashboard.js',
             'dashboard_pos/static/src/css/pos_dashboard.css',
-            'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js'
+            'dashboard_pos/static/lib/chartjs/chart.umd.min.js',
         ],
     },
+    'images': ['static/description/banner.png'],
     'license': "AGPL-3",
     'installable': True,
     'application': False,
-    'auto_install': False,
 }

@@ -1,395 +1,570 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates id="template" xml:space="preserve">
+    <!--  Template for Pos Dashboard  -->
     <t t-name="PosDashboard">
         <div class="oh_dashboards">
         <div class="container-fluid o_pos_dashboard">
-        <div class="row main-section" align="center">
-            <div class="col-md-4 col-sm-6 pos_order_today oh-payslip"
-                 t-on-click="pos_order_today">
-                        <div class="oh-card" style="width: 288px;">
-                            <div class="oh-card-body">
-                                <div class="stat-widget-one">
-                                    <div class="stat-icon"
-                                         style="background:#5bcbd0"><i class="fa fa-shopping-bag"/></div>
-                                    <div class="stat-content">
-                                        <div class="stat-head">Pedidos de Hoy</div>
-                                        <div class="stat_count"><t t-esc="state.today_sale"/></div>
+        <div class="o_pos_dashboard_filters bg-white shadow-sm mb-3">
+            <!-- Header Clean Layout -->
+            <div class="row g-2 align-items-center p-3">
+                <!-- Date Range & Quick Filters -->
+                <div class="col-12 col-lg-6">
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <div class="quick-filters-container" role="group" aria-label="Quick Filters">
+                            <button type="button" class="btn-quick-filter" t-att-class="{ 'active': state.activeDateRange === 'today' }" t-on-click="() => this.setDateRange('today')">Hoy</button>
+                            <button type="button" class="btn-quick-filter" t-att-class="{ 'active': state.activeDateRange === 'yesterday' }" t-on-click="() => this.setDateRange('yesterday')">Ayer</button>
+                            <button type="button" class="btn-quick-filter" t-att-class="{ 'active': state.activeDateRange === 'this_week' }" t-on-click="() => this.setDateRange('this_week')">Semana</button>
+                            <button type="button" class="btn-quick-filter" t-att-class="{ 'active': state.activeDateRange === 'last_fortnight' }" t-on-click="() => this.setDateRange('last_fortnight')">Quincena</button>
+                            <button type="button" class="btn-quick-filter" t-att-class="{ 'active': state.activeDateRange === 'this_month' }" t-on-click="() => this.setDateRange('this_month')">Mes</button>
+                            <button type="button" class="btn-quick-filter" t-att-class="{ 'active': state.activeDateRange === 'last_month' }" t-on-click="() => this.setDateRange('last_month')">Mes Pasado</button>
+                        </div>
+                        <div class="month-selector">
+                            <select class="form-select form-select-sm" t-on-change="selectMonth">
+                                <option value="">Seleccionar Mes...</option>
+                                <t t-foreach="state.recentMonths" t-as="m" t-key="m.id">
+                                    <option t-att-value="m.id"><t t-esc="m.label"/></option>
+                                </t>
+                            </select>
+                        </div>
+                        <div class="d-flex align-items-center bg-light rounded px-2 py-1 border">
+                            <i class="fa fa-calendar text-muted me-2"/>
+                            <input type="date" class="form-control form-control-sm border-0 bg-transparent p-0" style="width:auto;" t-ref="start_date" t-on-change="applyFilters"/>
+                            <span class="text-muted mx-2">-</span>
+                            <input type="date" class="form-control form-control-sm border-0 bg-transparent p-0" style="width:auto;" t-ref="end_date" t-on-change="applyFilters"/>
+                            <!-- Hidden time inputs to maintain logic but reduce clutter -->
+                            <input type="time" class="d-none" t-ref="start_time" t-on-change="applyFilters"/>
+                            <input type="time" class="d-none" t-ref="end_time" t-on-change="applyFilters"/>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- POS & Session Selectors -->
+                <div class="col-12 col-lg-6">
+                    <div class="d-flex gap-2 justify-content-lg-end">
+                        <!-- POS Selector (Mobile/Desktop Unified for simplicity in this view) -->
+                         <div class="d-none d-lg-block">
+                             <div class="pos-chips justify-content-end" t-ref="pos_checks">
+                                <t t-foreach="state.pos_configs" t-as="cfg" t-key="cfg.id">
+                                    <label class="pos-chip">
+                                        <input type="checkbox" t-att-data-pos="cfg.id" t-on-change="applyFilters"/>
+                                        <span class="pos-chip-label"><t t-esc="cfg.name"/></span>
+                                    </label>
+                                </t>
+                            </div>
+                         </div>
+                         <div class="d-block d-lg-none w-50">
+                            <select class="form-select form-select-sm" multiple="multiple" t-ref="pos_select" t-on-change="applyFilters">
+                                <t t-foreach="state.pos_configs" t-as="cfg" t-key="cfg.id">
+                                    <option t-att-value="cfg.id"><t t-esc="cfg.name"/></option>
+                                </t>
+                            </select>
+                         </div>
+
+                         <!-- Session Selector -->
+                        <div style="min-width: 200px;">
+                            <select class="form-select form-select-sm" t-ref="session_select" t-on-change="applyFilters">
+                                <option value="">Todas las sesiones</option>
+                                <t t-foreach="state.sessions" t-as="sess" t-key="sess.id">
+                                    <option t-att-value="sess.id">
+                                        <t t-esc="sess.config_name"/> - <t t-esc="sess.name"/> (<t t-esc="sess.status"/>)
+                                    </option>
+                                </t>
+                            </select>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div>
+                             <button type="button" class="btn btn-outline-danger btn-sm" t-on-click="closeSelectedSession" title="Cerrar Sesión Seleccionada"><i class="fa fa-power-off"/></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard-tabs d-flex justify-content-center mb-4">
+            <div class="bg-white rounded-pill shadow-sm p-1 d-inline-flex">
+                <a class="nav-link rounded-pill px-4 cursor-pointer" t-att-class="{active: state.currentTab === 'cuadres', 'bg-primary text-white': state.currentTab === 'cuadres', 'text-muted': state.currentTab !== 'cuadres'}" t-on-click="() => this.setTab('cuadres')">Cuadres</a>
+                <a class="nav-link rounded-pill px-4 cursor-pointer" t-att-class="{active: state.currentTab === 'ventas', 'bg-primary text-white': state.currentTab === 'ventas', 'text-muted': state.currentTab !== 'ventas'}" t-on-click="() => this.setTab('ventas')">Ventas</a>
+            </div>
+        </div>
+
+        <t t-if="state.currentTab === 'cuadres'">
+        <div class="o_pos_metrics px-3">
+            <div class="metrics-grid">
+                <div class="metric-card mc-sales" t-on-click="pos_order_today">
+                    <div class="metric-icon"><i class="fa fa-line-chart"/></div>
+                    <div>
+                        <div class="metric-title">Ventas Totales</div>
+                        <div class="metric-value"><t t-esc="state.total_sale"/></div>
+                        <div t-att-class="'metric-trend ' + trendClass(state.trend.sales_pct)">
+                            <t t-esc="fmtPct(state.trend.sales_pct)"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card mc-orders" t-on-click="pos_order">
+                    <div class="metric-icon"><i class="fa fa-shopping-bag"/></div>
+                    <div>
+                        <div class="metric-title">Órdenes</div>
+                        <div class="metric-value"><t t-esc="state.total_order_count"/></div>
+                        <div t-att-class="'metric-trend ' + trendClass(state.trend.orders_pct)">
+                            <t t-esc="fmtPct(state.trend.orders_pct)"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card mc-profit">
+                    <div class="metric-icon"><i class="fa fa-area-chart"/></div>
+                    <div>
+                        <div class="metric-title">Ganancias</div>
+                        <div class="metric-value"><t t-esc="state.profit_total"/></div>
+                        <div t-att-class="'metric-trend ' + trendClass(state.trend.profit_pct)">
+                            <t t-esc="fmtPct(state.trend.profit_pct)"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="metric-card mc-discount">
+                    <div class="metric-icon"><i class="fa fa-tag"/></div>
+                    <div>
+                        <div class="metric-title">Descuentos</div>
+                        <div class="metric-value"><t t-esc="state.discount_total"/></div>
+                    </div>
+                </div>
+                <div class="metric-card mc-refund" t-on-click="pos_refund_today_orders">
+                    <div class="metric-icon"><i class="fa fa-undo"/></div>
+                    <div>
+                        <div class="metric-title">Reembolso</div>
+                        <div class="metric-value"><t t-esc="state.today_refund_total"/></div>
+                    </div>
+                </div>
+                <div class="metric-card mc-expected" t-on-click="pos_session">
+                    <div class="metric-icon"><i class="fa fa-money"/></div>
+                    <div>
+                        <div class="metric-title">Cierre esperado</div>
+                        <div class="metric-value"><t t-esc="state.expected_close"/></div>
+                    </div>
+                </div>
+                
+                <!-- KPI: Ticket Promedio -->
+                <div class="metric-card" style="background: linear-gradient(135deg, #1abc9c, #16a085); color: white;">
+                    <div class="metric-icon text-white"><i class="fa fa-ticket"/></div>
+                    <div>
+                        <div class="metric-title">Ticket Promedio</div>
+                        <div class="metric-value"><t t-esc="state.avg_ticket || '$ 0.00'"/></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="container-fluid px-3 mt-3">
+            <div class="row style='margin:0px;'">
+                <div class="col-12 col-xxl-7" id="col-graph">
+                    <div class="card mb-3 shadow-sm border-0">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                            <h5 class="card-title mb-0 fw-bold text-primary">Reporte de Ventas</h5>
+                            <div class="card-tools">
+                                <select id="pos_sales" t-on-change="onclick_pos_sales" class="form-select form-select-sm border-0 bg-light">
+                                    <option value="pos_hourly_sales">Por hora</option>
+                                    <option value="pos_monthly_sales">Diario</option>
+                                    <option value="pos_year_sales">Anual</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                             <div class="row">
+                                <div class="col-md-12">
+                                    <div class="chart">
+                                      <canvas id="canvas_1" style="height:250px; width:100%;"></canvas>
+                                   </div>
+                                </div>
+                             </div>
+                        </div>
+                    </div>
+
+                    <!-- NEW CHARTS ROW 1: Customers & Salesperson -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 shadow-sm border-0">
+                                <div class="card-header bg-white fw-bold">Top Clientes</div>
+                                <div class="card-body">
+                                    <canvas class="top_customer" style="max-height: 250px;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 shadow-sm border-0">
+                                <div class="card-header bg-white fw-bold">Ventas por Vendedor</div>
+                                <div class="card-body">
+                                    <canvas class="top_salesperson" style="max-height: 250px;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NEW CHARTS ROW 2: Categories & Products -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 shadow-sm border-0">
+                                <div class="card-header bg-white fw-bold">Top Categorías</div>
+                                <div class="card-body">
+                                    <canvas class="top_product_categories" style="max-height: 250px;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100 shadow-sm border-0">
+                                <div class="card-header bg-white fw-bold">Top Productos (Gráfico)</div>
+                                <div class="card-body">
+                                    <canvas class="top_selling_product" style="max-height: 250px;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-12 col-xxl-5">
+                    <div class="oh-card section-card">
+                        <div class="oh-card-body">
+                            <div class="section-title">Métodos de Pago</div>
+                            <table class="table table-sm top10-table">
+                                <thead><tr><th>Método</th><th class="text-end">Monto</th></tr></thead>
+                                <tbody>
+                                    <t t-foreach="state.payment_details" t-as="payment_method" t-key="payment_method[0]">
+                                        <tr t-on-click="togglePaymentDetails" t-att-data-method="payment_method[0]" style="cursor:pointer;">
+                                            <td><t t-esc="payment_method[0]"/></td>
+                                            <td class="text-end"><t t-esc="payment_method[1]"/></td>
+                                        </tr>
+                                        <t t-set="details" t-value="(state.payment_details_breakdown and state.payment_details_breakdown[payment_method[0]]) or []"/>
+                                        <t t-if="details.length and state.expandedPaymentMethod == payment_method[0]">
+                                            <tr class="table-active">
+                                                <td colspan="2">
+                                                    <table class="table table-sm mb-0">
+                                                        <thead><tr><th>Fecha</th><th class="text-end">Monto</th><th>Ref</th></tr></thead>
+                                                        <tbody>
+                                                            <t t-foreach="details" t-as="d" t-key="d['date'] + '-' + (d['description'] or '')">
+                                                                <tr>
+                                                                    <td style="width:35%"><t t-esc="d['date']"/></td>
+                                                                    <td class="text-end" style="width:25%"><t t-esc="d['amount_str']"/></td>
+                                                                    <td style="width:40%"><t t-esc="d['description']"/></td>
+                                                                </tr>
+                                                            </t>
+                                                        </tbody>
+                                                    </table>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                    </t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="oh-card section-card">
+                        <div class="oh-card-body">
+                            <div class="section-title">Top 10 Productos Más Vendidos</div>
+                            <t t-set="prods" t-value="state.top_products or []"/>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Producto</th>
+                                        <th class="text-center cursor-pointer" t-on-click="() => this.setTopProductsSort('qty')">
+                                            Cant <i t-attf-class="fa fa-sort{{ state.filters.top_products_sort_by === 'qty' ? '-desc text-primary' : ' text-muted' }}"/>
+                                        </th>
+                                        <th class="text-end cursor-pointer" t-on-click="() => this.setTopProductsSort('amount')">
+                                            Ventas <i t-attf-class="fa fa-sort{{ state.filters.top_products_sort_by === 'amount' ? '-desc text-primary' : ' text-muted' }}"/>
+                                        </th>
+                                        <th class="text-end cursor-pointer" t-on-click="() => this.setTopProductsSort('profit')">
+                                            Ganancias <i t-attf-class="fa fa-sort{{ state.filters.top_products_sort_by === 'profit' ? '-desc text-primary' : ' text-muted' }}"/>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-if="prods.length">
+                                        <t t-foreach="prods" t-as="p" t-key="p.name">
+                                            <tr>
+                                                <td>
+                                                    <t t-if="p.image_url"><img t-att-src="p.image_url" class="prod-thumb me-1"/></t>
+                                                    <t t-esc="p.name"/>
+                                                </td>
+                                                <td class="text-center"><t t-esc="p.qty"/> <span class="text-muted small"><t t-esc="p.uom_name"/></span></td>
+                                                <td class="text-end"><t t-esc="p.amount"/></td>
+                                                <td class="text-end text-success small fw-bold"><t t-esc="p.profit"/></td>
+                                            </tr>
+                                        </t>
+                                    </t>
+                                    <t t-if="!prods.length"><tr><td colspan="4">Sin datos</td></tr></t>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="oh-card section-card">
+                        <div class="oh-card-body">
+                            <div class="section-title">Producto con Mayores Ganancias</div>
+                            <div class="row g-3 align-items-center">
+                                <div class="col-12 col-lg-4 text-center">
+                                    <t t-if="state.top_profit_product.image_url">
+                                        <img t-att-src="state.top_profit_product.image_url" class="prod-thumb-lg"/>
+                                    </t>
+                                </div>
+                                <div class="col-12 col-lg-8">
+                                    <div class="row g-1">
+                                        <div class="col-12 text-muted">Producto</div>
+                                        <div class="col-12 text-end"><t t-esc="state.top_profit_product.name"/></div>
+                                        <div class="col-12 text-muted mt-2">Cantidad</div>
+                                        <div class="col-12 text-end"><t t-esc="state.top_profit_product.qty"/></div>
+                                        <div class="col-12 text-muted mt-2">Ganancias</div>
+                                        <div class="col-12 text-end"><t t-esc="state.top_profit_product.profit"/></div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-            <div class="col-md-4 col-sm-6 pos_order oh-payslip"
-                 t-on-click="pos_order">
-                                    <div class="oh-card" style="width: 288px;">
-                                        <div class="oh-card-body">
-                                            <div class="stat-widget-one">
-                                                <div class="stat-icon"
-                                                     style="background:#645bd0"><i class="fa fa-shopping-bag"/></div>
-                                                <div class="stat-content">
-                                                    <div class="stat-head">Pedidos Totales</div>
-                                                    <div class="stat_count"><t t-esc="state.total_order_count"/></div>
-                                                </div>
+                    
+                    <div class="oh-card section-card">
+                        <div class="oh-card-body">
+                            <div class="section-title">Entradas y Salidas de Efectivo</div>
+                            <div class="toggle-header" t-on-click="toggleCashIn">
+                                <div><b>Entrada de Efectivo</b></div>
+                                <div>
+                                    <span><t t-esc="state.cash_in"/></span>
+                                    <i class="fa chev" t-att-class="state.expandCashIn ? 'fa-chevron-up' : 'fa-chevron-down'"/>
+                                </div>
+                            </div>
+                            <t t-if="state.expandCashIn">
+                                <table class="table table-sm mt-2">
+                                    <thead><tr><th>Fecha</th><th class="text-end">Monto</th><th>Motivo</th></tr></thead>
+                                    <tbody>
+                                        <t t-foreach="state.cash_in_details" t-as="ci" t-key="ci.date">
+                                            <tr>
+                                                <td style="width:40%"><t t-esc="ci.date"/></td>
+                                                <td class="text-end" style="width:20%"><t t-esc="ci.amount_str"/></td>
+                                                <td style="width:40%"><t t-esc="ci.reason"/></td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </t>
+                            <div class="toggle-header mt-3" t-on-click="toggleCashOut">
+                                <div class="d-flex align-items-center">
+                                    <b>Salida de Efectivo</b>
+                                    <button type="button" class="btn btn-sm btn-link p-0 ms-2 text-primary fw-bold" t-on-click="onSearchCashOut" title="Búsqueda Inteligente / Detalle Completo">
+                                        <i class="fa fa-search-plus me-1"/> Ver Detalle
+                                    </button>
+                                </div>
+                                <div>
+                                    <span><t t-esc="state.cash_out"/></span>
+                                    <i class="fa chev" t-att-class="state.expandCashOut ? 'fa-chevron-up' : 'fa-chevron-down'"/>
+                                </div>
+                            </div>
+                            <t t-if="state.expandCashOut">
+                                <table class="table table-sm mt-2">
+                                    <thead><tr><th>Fecha</th><th class="text-end">Monto</th><th>Motivo</th></tr></thead>
+                                    <tbody>
+                                        <t t-foreach="state.cash_out_details" t-as="co" t-key="co.date">
+                                            <tr>
+                                                <td style="width:40%"><t t-esc="co.date"/></td>
+                                                <td class="text-end" style="width:20%"><t t-esc="co.amount_str"/></td>
+                                                <td style="width:40%"><t t-esc="co.reason"/></td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </t>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </t>
+        <t t-if="state.currentTab === 'ventas'">
+            <div class="container-fluid mt-3">
+                <div class="row mb-3 px-3">
+                    <div class="col-md-6 col-lg-4 mb-2 mb-md-0">
+                        <div class="input-group">
+                            <span class="input-group-text border bg-white ps-3"><i class="fa fa-search text-muted"/></span>
+                            <input type="text" class="form-control border-start-0 ps-0" placeholder="Buscar..." t-model="state.salesSearchTerm" t-on-input="searchSales" style="box-shadow:none;"/>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Category Summary Cards -->
+                <div class="row g-3 mb-4 px-3">
+                    <t t-foreach="state.category_summary" t-as="cat" t-foreach-index="cat_index" t-key="'cat-' + (cat.category_id or cat_index)">
+                        <div class="col-6 col-md-4 col-lg-3">
+                            <div t-attf-class="card h-100 border-0 shadow-sm category-card {{ state.selectedCategories.includes(cat.category_id) ? 'border-primary border-2' : '' }}" 
+                                 style="border-radius: 12px; cursor: pointer; transition: all 0.2s;"
+                                 t-on-click="() => this.toggleCategory(cat.category_id)">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <h6 class="fw-bold text-dark mb-0 text-truncate" style="max-width: 80%;"><t t-esc="cat.category"/></h6>
+                                        <i t-if="state.selectedCategories.includes(cat.category_id)" class="fa fa-check-circle text-primary"/>
+                                    </div>
+                                    <div class="small text-muted mb-1"><t t-esc="cat.qty"/> unidades</div>
+                                    <div class="fw-bold text-primary"><t t-esc="cat.total_str"/></div>
+                                    <div class="small text-success"><i class="fa fa-arrow-up me-1"/><t t-esc="cat.profit_str"/></div>
+                                </div>
+                            </div>
+                        </div>
+                    </t>
+                </div>
+
+                <!-- Sales Listing -->
+                <div class="px-3">
+                <t t-if="state.view_mode === 'realtime'">
+                    <div class="row g-3">
+                        <t t-if="!state.detailed_sales.length">
+                            <div class="col-12 py-5 text-center text-muted">
+                                <i class="fa fa-clock-o fa-3x opacity-25 mb-3"/>
+                                <p>No hay ventas recientes para mostrar.</p>
+                            </div>
+                        </t>
+                        <t t-foreach="state.detailed_sales" t-as="sale" t-foreach-index="sale_index" t-key="'rt-' + (sale.line_id or sale_index)">
+                            <div class="col-12 col-md-6 col-xxl-4">
+                                <div class="card h-100 border-0 shadow-sm sale-card" style="border-radius: 20px;">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div>
+                                                <t t-if="sale.image_url"><img t-att-src="sale.image_url" class="rounded-3 border sale-product-image" style="width: 80px; height: 80px; object-fit: cover;"/></t>
+                                                <t t-else=""><div class="rounded-3 bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center sale-product-placeholder" style="width: 80px; height: 80px;"><i class="fa fa-image text-muted fa-2x"/></div></t>
                                             </div>
+                                            <div class="text-end">
+                                                <div class="mb-1"><span class="badge bg-white text-dark border fw-normal sale-category-pill" style="font-size: 0.8rem; cursor: pointer;" t-on-click="() => this.toggleCategory(sale.category_id)"><t t-esc="sale.category"/></span></div>
+                                                <small class="fw-bold text-dark" style="font-size: 0.85rem;"><t t-esc="sale.formatted_time"/></small>
+                                            </div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <h5 class="fw-bold text-dark mb-1" style="font-size: 1.1rem;"><t t-esc="sale.product"/></h5>
+                                            <div class="d-flex flex-wrap gap-2 align-items-center text-muted small mb-1">
+                                                <span class="badge bg-light text-dark border order-pill" style="cursor: pointer;" t-on-click="() => this.openOrder(sale.order_id)"><i class="fa fa-shopping-cart me-1"/> <t t-esc="sale.order_name"/></span>
+                                                <span class="text-muted small d-inline-flex align-items-center gap-1 seller-chip">
+                                                    <t t-if="sale.salesperson_image_url"><img t-att-src="sale.salesperson_image_url" class="seller-avatar" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover;"/></t>
+                                                    <i class="fa fa-user"/> <t t-esc="sale.salesperson"/>
+                                                </span>
+                                                <t t-if="sale.partner_name">
+                                                    <span class="text-muted small d-inline-flex align-items-center gap-1 customer-chip">
+                                                        <i class="fa fa-address-book-o"/> <t t-esc="sale.partner_name"/>
+                                                    </span>
+                                                </t>
+                                                <t t-if="sale.messenger">
+                                                    <span class="text-muted small d-inline-flex align-items-center gap-1 messenger-chip">
+                                                        <i class="fa fa-bicycle"/> <t t-esc="sale.messenger"/>
+                                                        <t t-if="sale.delivery_status === 'pending'"><span class="badge bg-warning rounded-pill ms-1 p-1" style="font-size: 10px;">En camino</span></t>
+                                                        <t t-if="sale.delivery_status === 'delivered'"><span class="badge bg-success rounded-pill ms-1 p-1" style="font-size: 10px;">Entregado</span></t>
+                                                    </span>
+                                                </t>
+                                            </div>
+                                            
+                                            <t t-if="sale.partner_comment">
+                                                <div class="customer-notes-box mt-2 p-2 rounded">
+                                                    <div class="notes-header">
+                                                        <i class="fa fa-sticky-note-o me-1"/> NOTA INTERNA
+                                                    </div>
+                                                    <div class="notes-content"><t t-esc="sale.partner_comment"/></div>
+                                                </div>
+                                            </t>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-end mt-3 pt-2 border-top border-light">
+                                            <div>
+                                                <div class="text-muted small mb-1">Cant: <span class="fw-bold text-dark"><t t-esc="sale.qty"/> <t t-esc="sale.uom_name"/></span></div>
+                                                <div class="text-success small fw-bold"><i class="fa fa-arrow-up me-1"/> <t t-esc="sale.profit_str"/></div>
+                                            </div>
+                                            <div class="h4 fw-bold text-dark mb-0"><t t-esc="sale.total_str"/></div>
                                         </div>
                                     </div>
                                 </div>
-            <div class="col-md-4 col-sm-6 pos_total_sales oh-payslip"
-                 t-on-click="pos_order">
-                                    <div class="oh-card" style="width: 350px;">
-                                        <div class="oh-card-body">
-                                            <div class="stat-widget-one">
-                                                <div class="stat-icon"
-                                                     style="background:#85d05b"><i class="fa fa-shopping-cart"/></div>
-                                                <div class="stat-content">
-                                                    <div class="stat-head">Ventas Totales</div>
-                                                    <div class="stat_count"><t t-esc="state.total_sale"/></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                            </div>
+                        </t>
+                    </div>
+                </t>
+                <t t-else="">
+                    <!-- Desktop Table View -->
+                    <div class="card shadow-sm border-0 d-none d-lg-block" style="border-radius: 12px; overflow: hidden;">
+                        <div class="card-header bg-white py-3 border-bottom-0 d-flex justify-content-between align-items-center">
+                            <h5 class="card-title fw-bold mb-0 text-dark">Productos Vendidos (Agrupado)</h5>
+                            <span class="badge bg-primary rounded-pill"><t t-esc="state.detailed_sales.length"/> productos</span>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                <table class="table table-hover mb-0 align-middle sales-table">
+                                    <thead class="bg-light sticky-top" style="z-index: 10;">
+                                        <tr>
+                                            <th class="ps-4 text-muted text-uppercase small fw-bold">Producto</th>
+                                            <th class="text-muted text-uppercase small fw-bold">Categoría</th>
+                                            <th class="text-center text-muted text-uppercase small fw-bold">Órdenes</th>
+                                            <th class="text-center text-muted text-uppercase small fw-bold">Cantidad</th>
+                                            <th class="text-end text-muted text-uppercase small fw-bold">Total</th>
+                                            <th class="text-end pe-4 text-muted text-uppercase small fw-bold">Ganancia</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="state.detailed_sales" t-as="sale" t-foreach-index="sale_index" t-key="'agg-' + (sale.product_id or sale_index) + '-' + (sale.uom_id or '')">
+                                            <tr>
+                                                <td class="ps-4">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="flex-shrink-0 me-3">
+                                                            <t t-if="sale.image_url"><img t-att-src="sale.image_url" class="rounded-3 border" style="width: 48px; height: 48px; object-fit: cover;" loading="lazy"/></t>
+                                                            <t t-else=""><div class="rounded-3 bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;"><i class="fa fa-image text-muted"/></div></t>
+                                                        </div>
+                                                        <div class="fw-bold text-dark"><t t-esc="sale.product"/></div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-nowrap"><span class="badge bg-light text-dark border" style="cursor: pointer;" t-on-click="() => this.toggleCategory(sale.category_id)"><t t-esc="sale.category"/></span></td>
+                                                <td class="text-center text-muted"><t t-esc="sale.order_count"/></td>
+                                                <td class="text-center fw-bold text-dark"><t t-esc="sale.qty"/> <span class="text-muted small"><t t-esc="sale.uom_name"/></span></td>
+                                                <td class="text-end fw-bold text-dark"><t t-esc="sale.total_str"/></td>
+                                                <td class="text-end pe-4 fw-bold text-success"><t t-esc="sale.profit_str"/></td>
+                                            </tr>
+                                        </t>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mobile Card View (Aggregated) -->
+                    <div class="d-block d-lg-none">
+                        <div class="row g-3">
+                            <t t-if="!state.detailed_sales.length">
+                                <div class="col-12 py-5 text-center text-muted">
+                                    <i class="fa fa-folder-open-o fa-3x opacity-25 mb-3"/>
+                                    <p>No hay productos agrupados para mostrar.</p>
                                 </div>
-            <div class="col-md-4 col-sm-6 pos_session oh-payslip"
-                 t-on-click="pos_session">
-                                            <div class="oh-card"
-                                                 style="width: 288px;">
-                                                <div class="oh-card-body">
-                                                    <div class="stat-widget-one">
-                                                        <div class="stat-icon"
-                                                             style="background:#d05bb8"><i class="fa fa-signal"/></div>
-                                                        <div class="stat-content">
-                                                            <div class="stat-head">Sesiones</div>
-                                                            <div class="stat_count"><t t-esc="state.total_session"/></div>
+                            </t>
+                            <t t-foreach="state.detailed_sales" t-as="sale" t-foreach-index="sale_index" t-key="'aggcard-' + (sale.product_id or sale_index) + '-' + (sale.uom_id or '')">
+                                <div class="col-12 col-md-6">
+                                    <div class="card h-100 border-0 shadow-sm sale-card" style="border-radius: 15px;">
+                                        <div class="card-body p-3">
+                                            <div class="d-flex gap-3">
+                                                <div class="flex-shrink-0">
+                                                    <t t-if="sale.image_url"><img t-att-src="sale.image_url" class="rounded-3 border" style="width: 64px; height: 64px; object-fit: cover;"/></t>
+                                                    <t t-else=""><div class="rounded-3 bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 64px; height: 64px;"><i class="fa fa-image text-muted"/></div></t>
+                                                </div>
+                                                <div class="flex-grow-1 min-width-0">
+                                                    <div class="d-flex justify-content-between align-items-start mb-1">
+                                                        <h6 class="fw-bold text-dark mb-0 text-truncate"><t t-esc="sale.product"/></h6>
+                                                        <span class="badge bg-light text-dark border ms-2" style="font-size: 0.7rem;"><t t-esc="sale.category"/></span>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                                        <div class="small text-muted">
+                                                            <div>Cant: <span class="fw-bold text-dark"><t t-esc="sale.qty"/> <t t-esc="sale.uom_name"/></span></div>
+                                                            <div class="text-success fw-bold"><t t-esc="sale.profit_str"/></div>
+                                                        </div>
+                                                        <div class="text-end">
+                                                            <div class="h5 fw-bold text-dark mb-0"><t t-esc="sale.total_str"/></div>
+                                                            <div class="small text-muted"><t t-esc="sale.order_count"/> órdenes</div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                </div>
-
-            <div class="col-md-4 col-sm-6 pos_refund_orders oh-payslip"
-                 t-on-click="pos_refund_orders">
-                                    <div class="oh-card" style="width: 288px;">
-                                        <div class="oh-card-body">
-                                            <div class="stat-widget-one">
-                                                <div class="stat-icon"
-                                                     style="background:#d0c35b"><i class="fa fa-minus-circle"/></div>
-                                                <div class="stat-content">
-                                                    <div class="stat-head">Total de Reembolsos</div>
-                                                    <div class="stat_count"><t t-esc="state.total_refund_count"/></div>
-                                                </div>
-                                            </div>
                                         </div>
                                     </div>
                                 </div>
-            <div class="col-md-4 col-sm-6 pos_refund_today_orders oh-payslip"
-                 t-on-click="pos_refund_today_orders">
-                                    <div class="oh-card" style="width: 350px;">
-                                        <div class="oh-card-body">
-                                            <div class="stat-widget-one">
-                                                <div class="stat-icon"
-                                                     style="background:#5b8ed0"><i class="fa fa-minus-circle"/></div>
-                                                <div class="stat-content">
-                                                    <div class="stat-head">Reembolsos de Hoy</div>
-                                                    <div class="stat_count"><t t-esc="state.today_refund_total"/></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-            </div>
-            </div>
-        </div>
-        <div class="row" style="margin: 20px 15px;">
-            <div class="col-12">
-                <div class="modern-filter-card">
-                    <div class="filter-header">
-                        <div class="filter-icon">
-                            <i class="fa fa-sliders"/>
-                        </div>
-                        <h3 class="filter-title">Filtros de búsqueda</h3>
-                    </div>
-                    
-                    <div class="filter-body">
-                        <div class="filter-dates-row">
-                            <div class="filter-date-group">
-                                <label class="modern-label">
-                                    <i class="fa fa-calendar-o"/> Fecha inicio
-                                </label>
-                                <input type="datetime-local"
-                                       class="modern-input"
-                                       t-att-value="state.filter_start"
-                                       t-on-change="onChangeStart"/>
-                            </div>
-                            <div class="filter-date-group">
-                                <label class="modern-label">
-                                    <i class="fa fa-calendar-o"/> Fecha fin
-                                </label>
-                                <input type="datetime-local"
-                                       class="modern-input"
-                                       t-att-value="state.filter_end"
-                                       t-on-change="onChangeEnd"/>
-                            </div>
-                        </div>
-                        
-                        <div class="filter-configs-section">
-                            <label class="modern-label">
-                                <i class="fa fa-cog"/> Configuraciones POS
-                            </label>
-                            <div class="modern-config-chips">
-                                <t t-foreach="state.configs" t-as="config" t-key="config.id">
-                                    <label class="modern-chip">
-                                        <input type="checkbox"
-                                               t-att-checked="state.selected_configs.includes(config.id) ? 'checked' : null"
-                                               t-att-data-config-id="config.id"
-                                               t-on-change="onToggleConfig"/>
-                                        <span class="chip-text"><t t-esc="config.name"/></span>
-                                        <span class="chip-checkmark">✓</span>
-                                    </label>
-                                </t>
-                            </div>
-                        </div>
-                        
-                        <button class="modern-apply-btn" t-on-click="applyFilters">
-                            <i class="fa fa-filter"/> Aplicar filtros
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="row metrics-section" style="margin: 20px 0;">
-            <div class="col-12">
-                <div class="summary-grid-five">
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                        <span>💰 VENTA TOTAL</span>
-                        <strong t-esc="formatCurrency(state.detailed_report.summary.total_amount || 0)"/>
-                    </div>
-                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                        <span>📦 TOTAL DE ARTÍCULOS</span>
-                        <strong t-esc="formatNumber(state.detailed_report.summary.total_quantity || 0, 0)"/>
-                    </div>
-                    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
-                        <span>🏆 PRODUCTO MÁS VENDIDO</span>
-                        <div class="top-product-content">
-                            <t t-if="state.detailed_report.summary.top_product_image">
-                                <img class="top-product-image" 
-                                     t-att-src="'data:image/jpeg;base64,' + state.detailed_report.summary.top_product_image"
-                                     alt="Producto"
-                                     onerror="this.onerror=null; this.parentElement.innerHTML='&lt;div class=&quot;top-product-placeholder&quot;&gt;📦&lt;/div&gt;';"/>
                             </t>
-                            <t t-else="">
-                                <div class="top-product-placeholder">📦</div>
-                            </t>
-                            <div class="top-product-info">
-                                <strong t-esc="state.detailed_report.summary.top_product_name || 'N/A'"/>
-                                <small style="display: block; margin-top: 5px; font-size: 0.8em;">
-                                    <t t-esc="formatNumber(state.detailed_report.summary.top_product_qty || 0, 0)"/> unidades
-                                </small>
-                            </div>
                         </div>
                     </div>
-                    <div style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
-                        <span>💎 PRODUCTO + RENTABLE</span>
-                        <div class="top-product-content">
-                            <t t-if="state.detailed_report.summary.top_profit_product_image">
-                                <img class="top-product-image" 
-                                     t-att-src="'data:image/jpeg;base64,' + state.detailed_report.summary.top_profit_product_image"
-                                     alt="Producto"
-                                     onerror="this.onerror=null; this.parentElement.innerHTML='&lt;div class=&quot;top-product-placeholder&quot;&gt;💎&lt;/div&gt;';"/>
-                            </t>
-                            <t t-else="">
-                                <div class="top-product-placeholder">💎</div>
-                            </t>
-                            <div class="top-product-info">
-                                <strong t-esc="state.detailed_report.summary.top_profit_product_name || 'N/A'"/>
-                                <small style="display: block; margin-top: 5px; font-size: 0.8em;">
-                                    Ganancia: <t t-esc="formatCurrency(state.detailed_report.summary.top_profit_amount || 0)"/>
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
-                        <span>💵 GANANCIAS TOTALES</span>
-                        <strong t-esc="formatCurrency(state.detailed_report.summary.total_profit || 0)"/>
-                    </div>
+                </t>
                 </div>
             </div>
+        </t>
         </div>
         </div>
-        <div class="col-xs-12 col-sm-12 col-lg-12 col-md-12">
-            <div class="row" style="margin:0px;">
-                <div class="col-sm-4 col-lg-4  top_customer_graph_view">
-                    <div class="oh-card text-color">
-                        <div class="oh-card-body pb-0">
-                            <h4 class="mb-0">
-                            </h4>
-                        </div>
-                        <canvas class="top_customer" width="100" height="80"/>
-                    </div>
-                </div>
-                <div class="col-sm-6 col-lg-6  selling_product_graph_view">
-                    <div class="oh-card text-color">
-                        <div class="oh-card-body pb-0">
-                            <h4 class="mb-0">
-                            </h4>
-                        </div>
-                        <canvas class="top_selling_product" width="200"
-                                height="120"/>
-                    </div>
-                </div>
-                <div class="col-sm-6 col-lg-6  selling_product_graph_view">
-                    <div class="oh-card text-color">
-                        <div class="oh-card-body pb-0">
-                            <h4 class="mb-0">
-                            </h4>
-                        </div>
-                        <canvas class="top_product_categories" width="200"
-                                height="120"/>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="employee_dashboard_main">
-        <div class="row main-section">
-            <div class="col-md-4 col-lg-4">
-                <div class="hr_notification" style="background: #fff;transition: transform 0.2s ease, box-shadow 0.2s ease;will-change: transform, box-shadow;box-shadow: 0 10px 40px 0 rgba(62,57,107,0.07), 0 2px 9px 0 rgba(62,57,107,0.06);
-                height: 316px;overflow-y: auto;margin-bottom: 15px;">
-                    <div class="hr_notification_head"
-                         style="font-size: 17px;text-align: center;padding: 12px 0;color: #fff;font-weight: 300;background: #de6a5e;margin-bottom: 9px;">
-                   Ventas por Vendedor
-                    </div>
-                    <div class="col-sm-12 col-lg-12" style="padding:0;">
-                            <div class="text-color">
-                                <div class="">
-                                <div class="media">
-                                <div class="media-body">
-                                    <table class="table table-sm">
-                                        <thead>
-                                            <tr>
-                                                <th rowspan="12">Nombre&#160;&#160;&#160;</th>
-                                                <th rowspan="12">Pedidos</th>
-                                                <th rowspan="12">Monto</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                             <t t-foreach="state.top_salesperson"
-                                                t-as="salesperson"
-                                                t-key="salesperson_index">
-                                                <tr>
-                                                    <td>
-                                                        <h2 class="text-color display-6"
-                                                            style="font-size: 15px;">
-                                                            <t t-esc="salesperson[0]"/>
-                                                        </h2>
-                                                    </td>
-                                                    <td>
-                                                        <h2 class="text-color display-6"
-                                                            style="font-size: 15px;">
-                                                            <t t-esc="salesperson[2]"/>
-                                                        </h2>
-                                                    </td>
-                                                    <td>
-                                                        <h2 class="text-color display-6"
-                                                            style="font-size: 15px;">
-                                                            <t t-esc="salesperson[1]"/>
-                                                        </h2>
-                                                    </td>
-                                                </tr>
-                                            </t>
-                                        </tbody>
-                                    </table>
-                                </div></div></div></div>
-                            </div>
-                    </div>
-            </div>
-            <div class="col-md-4 col-lg-4">
-                    <div class="hr_notification" style="background: #fff;transition: transform 0.2s ease, box-shadow 0.2s ease;will-change: transform, box-shadow;box-shadow: 0 10px 40px 0 rgba(62,57,107,0.07), 0 2px 9px 0 rgba(62,57,107,0.06);
-                    height: 316px;overflow-y: auto;margin-bottom: 15px;">
-                        <div class="hr_notification_head"
-                             style="font-size: 17px;text-align: center;padding: 12px 0;color: #fff;font-weight: 300;background:#de6a5e;;margin-bottom: 9px;">
-                          Método de Pago
-                        </div>
-                        <div class="col-sm-12 col-lg-12" style="padding:0;">
-                                <div class="text-color">
-                                    <div class="">
-                                    <div class="media">
-                                    <div class="media-body">
-                                        <table class="table table-sm">
-                                            <thead>
-                                                <tr>
-                                                    <th rowspan="12">Método de Pago&#160;&#160;&#160;</th>
-                                                    <th rowspan="12">Monto</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                 <t t-foreach="state.payment_details"
-                                                    t-as="payment_method"
-                                                    t-key="payment_method_index">
-                                                    <tr>
-                                                        <td>
-                                                            <h2 class="text-color display-6"
-                                                                style="font-size: 15px;">
-                                                                <t t-esc="payment_method[0]"/>
-                                                            </h2>
-                                                        </td>
-                                                        <td>
-                                                            <h2 class="text-color display-6"
-                                                                style="font-size: 15px;">
-                                                                <t t-esc="payment_method[1]"/>
-                                                            </h2>
-                                                        </td>
-                                                    </tr>
-                                                </t>
-                                            </tbody>
-                                        </table>
-                                    </div></div></div></div>
-                                </div>
-                    </div>
-            </div>
-            <div class="col-md-4 col-lg-4">
-                <div class="hr_notification" style="background: #fff;transition: transform 0.2s ease, box-shadow 0.2s ease;will-change: transform, box-shadow;box-shadow: 0 10px 40px 0 rgba(62,57,107,0.07), 0 2px 9px 0 rgba(62,57,107,0.06);
-                height: 316px;overflow-y: auto;margin-bottom: 15px;">
-                    <div class="hr_notification_head"
-                         style="font-size: 17px;text-align: center;padding: 12px 0;color: #fff;font-weight: 300;background: #de6a5e;margin-bottom: 9px;">
-                 Estado de Sesiones
-                    </div>
-                    <div class="col-sm-12 col-lg-12" style="padding:0;">
-                            <div class="text-color">
-                                <div class="">
-                                <div class="media">
-                                <div class="media-body">
-                                    <table class="table table-sm">
-                                        <thead>
-                                            <tr>
-                                                <th rowspan="12">Sesión&#160;&#160;&#160;</th>
-                                                <th rowspan="12">Estado</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                             <t t-foreach="state.sessions_list"
-                                                t-as="session"
-                                                t-key="session_index">
-                                                <tr>
-                                                    <td>
-                                                        <h2 class="text-color display-6"
-                                                            style="font-size: 15px;">
-                                                            <t t-esc="session['session']"/>
-                                                        </h2>
-                                                    </td>
-                                                    <td>
-                                                        <h2 class="text-color display-6"
-                                                            style="font-size: 15px;">
-                                                            <t t-esc="session['status']"/>
-                                                        </h2>
-                                                    </td>
-                                                </tr>
-                                            </t>
-                                        </tbody>
-                                    </table>
-                                </div></div></div></div>
-                            </div>
-                    </div>
-            </div>
-            </div>
-         </div>
     </t>
 </templates>
