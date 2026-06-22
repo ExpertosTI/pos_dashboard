@@ -140,7 +140,14 @@ export class PosDashboard extends Component {
       await this.applyFilters();
       this.refreshHandle = setInterval(() => { this.applyFilters(); }, 15000);
     });
-    onWillUnmount(() => { if (this.refreshHandle) { clearInterval(this.refreshHandle); this.refreshHandle = null; } });
+    onWillUnmount(() => {
+      if (this.refreshHandle) { clearInterval(this.refreshHandle); this.refreshHandle = null; }
+      if (this.myCharts) this.myCharts.destroy();
+      if (this.custChart) this.custChart.destroy();
+      if (this.prodChart) this.prodChart.destroy();
+      if (this.catChart) this.catChart.destroy();
+      if (this.sellerChart) this.sellerChart.destroy();
+    });
   }
 
   // NEW: Quick Filter Logic
@@ -612,7 +619,6 @@ export class PosDashboard extends Component {
   }
   onclick_pos_sales(events) {
     //  To get the Sale bar chart
-    var self = this
     var option = null;
     if (events && events.target) {
       option = events.target.value;
@@ -626,7 +632,7 @@ export class PosDashboard extends Component {
     if (!ctx) { return; }
     const filters = this.state.filters
     this.orm.call('pos.order', 'get_department', [option, filters])
-      .then(function (arrays) {
+      .then((arrays) => {
         var cols = chartColors(arrays[0].length);
         var data = {
           labels: arrays[1],
@@ -654,9 +660,10 @@ export class PosDashboard extends Component {
           }
         };
         //create Chart class object
-        if (window.myCharts != undefined)
-          window.myCharts.destroy();
-        window.myCharts = new Chart(ctx, {
+        if (this.myCharts) {
+          this.myCharts.destroy();
+        }
+        this.myCharts = new Chart(ctx, {
           type: "bar",
           data: data,
           options: options
@@ -666,14 +673,13 @@ export class PosDashboard extends Component {
   }
   render_top_customer_graph() {
     //      To render the top customer pie chart
-    var self = this
     var el = document.querySelector('.top_customer');
     if (!el) { return; }
     var ctx = el.getContext('2d');
     if (!ctx) { return; }
     const filters = this.state.filters
     this.orm.call('pos.order', 'get_the_top_customer', [filters])
-      .then(function (arrays) {
+      .then((arrays) => {
         var cols = chartColors(arrays[0].length);
         var data = {
           labels: arrays[1],
@@ -700,8 +706,10 @@ export class PosDashboard extends Component {
           }
         };
         //create Chart class object
-        if (window.custChart) window.custChart.destroy();
-        window.custChart = new Chart(ctx, {
+        if (this.custChart) {
+          this.custChart.destroy();
+        }
+        this.custChart = new Chart(ctx, {
           type: "pie",
           data: data,
           options: options
@@ -711,14 +719,13 @@ export class PosDashboard extends Component {
   }
   render_top_product_graph() {
     //   To render the top product graph
-    var self = this
     var el = document.querySelector('.top_selling_product');
     if (!el) { return; }
     var ctx = el.getContext('2d');
     if (!ctx) { return; }
     const filters = this.state.filters
     this.orm.call('pos.order', 'get_the_top_products', [filters])
-      .then(function (arrays) {
+      .then((arrays) => {
         var cols = chartColors(arrays[0].length);
         var data = {
           labels: arrays[1],
@@ -741,8 +748,10 @@ export class PosDashboard extends Component {
             legend: { display: false }
           }
         };
-        if (window.prodChart) window.prodChart.destroy();
-        window.prodChart = new Chart(ctx, {
+        if (this.prodChart) {
+          this.prodChart.destroy();
+        }
+        this.prodChart = new Chart(ctx, {
           type: "bar",
           data: data,
           options: options
@@ -751,14 +760,13 @@ export class PosDashboard extends Component {
   }
   render_product_category_graph() {
     //    To render the product category graph
-    var self = this
     var el = document.querySelector('.top_product_categories');
     if (!el) { return; }
     var ctx = el.getContext('2d');
     if (!ctx) { return; }
     const filters = this.state.filters
     this.orm.call('pos.order', 'get_the_top_categories', [filters])
-      .then(function (arrays) {
+      .then((arrays) => {
         var cols = chartColors(arrays[0].length);
         var data = {
           labels: arrays[1],
@@ -781,8 +789,10 @@ export class PosDashboard extends Component {
             legend: { display: false }
           }
         };
-        if (window.catChart) window.catChart.destroy();
-        window.catChart = new Chart(ctx, {
+        if (this.catChart) {
+          this.catChart.destroy();
+        }
+        this.catChart = new Chart(ctx, {
           type: "bar",
           data: data,
           options: options
@@ -824,8 +834,10 @@ export class PosDashboard extends Component {
       },
       indexAxis: 'y', // Horizontal bars
     };
-    if (window.sellerChart) window.sellerChart.destroy();
-    window.sellerChart = new Chart(ctx, {
+    if (this.sellerChart) {
+      this.sellerChart.destroy();
+    }
+    this.sellerChart = new Chart(ctx, {
       type: "bar",
       data: data,
       options: options

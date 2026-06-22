@@ -524,14 +524,9 @@ class PosOrder(models.Model):
         profit_by_product = {}
         qty_by_product = {}
         sales_by_product = {}
-        has_sol = 'sale_line_id' in self.env['pos.order.line']._fields
-        has_ticket = 'mobile_ticket_id' in self.env['pos.order']._fields
-        
-        for ln in lines:
-            if _name_excluded(ln.product_id):
-                continue
         has_sol = any(f in self.env['pos.order.line']._fields for f in ['sale_order_line_id', 'sale_line_id'])
         sale_fld = 'sale_order_line_id' if 'sale_order_line_id' in self.env['pos.order.line']._fields else 'sale_line_id'
+        has_ticket = 'mobile_ticket_id' in self.env['pos.order']._fields
         
         for ln in lines:
             pid = ln.product_id.id
@@ -917,8 +912,13 @@ class PosOrder(models.Model):
         """ Function to get the top products with optional filters"""
         where, params = self._build_where_clause(filters)
         user_lang = self.env.user.lang or 'en_US'
+        
+        pt_name_field = self.env['product.template']._fields.get('name')
+        is_name_json = pt_name_field and pt_name_field.translate
+        name_expr = "(product_template.name ->> %s)" if is_name_json else "product_template.name"
+        
         query = (
-            '''select DISTINCT(product_template.name)->>%s as product_name,
+            '''select {name_expr} as product_name,
                       sum(pos_order_line.qty * COALESCE(uu.factor_inv, 1.0) / COALESCE(tuu.factor_inv, 1.0)) as total_quantity 
                from pos_order_line 
                inner join product_product on product_product.id=pos_order_line.product_id 
@@ -928,8 +928,8 @@ class PosOrder(models.Model):
                left join uom_uom tuu on tuu.id = product_template.uom_id
                where {where} group by product_template.id, product_template.name ORDER 
                BY total_quantity DESC Limit 10 '''
-        ).format(where=where)
-        self._cr.execute(query, tuple([user_lang] + params))
+        ).format(where=where, name_expr=name_expr)
+        self._cr.execute(query, tuple(([user_lang] if is_name_json else []) + params))
         top_product = self._cr.dictfetchall()
         total_quantity = []
         for record in top_product:
@@ -945,7 +945,7 @@ class PosOrder(models.Model):
         """ Function to get the top Product categories with optional filters"""
         where, params = self._build_where_clause(filters)
         query = (
-            '''select DISTINCT(product_category.complete_name) as product_category,
+            '''select product_category.complete_name as product_category,
                       sum(pos_order_line.qty * COALESCE(uu.factor_inv, 1.0) / COALESCE(tuu.factor_inv, 1.0)) as total_quantity 
                from pos_order_line 
                inner join product_product on product_product.id=pos_order_line.product_id  
@@ -972,7 +972,6 @@ class PosOrder(models.Model):
         allowed_companies = self.env.companies.ids or [self.env.company.id]
         configs = self.env['pos.config'].search([('company_id', 'in', allowed_companies)])
         return [{'id': cfg.id, 'name': cfg.name} for cfg in configs]
-
     @api.model
     def get_categories(self):
         """ Get all active product categories for filters """
@@ -984,86 +983,37 @@ class PosOrder(models.Model):
     def get_detailed_sales(self, filters=None, search_term=None, category_ids=None, view_mode=None):
         """ Get aggregated sales metrics grouped by Category > Product (Universal Compatibility) """
         user_lang = self.env.user.lang or 'en_US'
-        where, params = self._build_where_clause(filters)
-        
+        base_where, base_params = self._build_where_clause(filters)
+        query_params = list(base_params)
+
         # 1. Determine Product Name Field (JSONB vs Char)
-        # Odoo 16/17+ with jsonb translations: name is a logic field backed by JSON column?
-        # Actually in SQL: 
-        # - Old Odoo: pt.name is VARCHAR (translated via ir_translation)
-        # - New Odoo (17+): pt.name is JSONB
-        # Safe interaction: Use COALESCE or try to detect.
-        # Detection via IR Model Fields:
-        pt_name_field = self.env['ir.model.fields'].search([('model', '=', 'product.template'), ('name', '=', 'name')], limit=1)
-        is_name_json = pt_name_field.ttype == 'json' or pt_name_field.ttype == 'jsonb'
-        
+        pt_name_field = self.env['product.template']._fields.get('name')
+        is_name_json = pt_name_field and pt_name_field.translate
+
         if is_name_json:
             name_expr = "(pt.name ->> %s)"
             search_name_expr = "(pt.name ->> %s)"
-            # Param needed for name extraction
-            name_params = [user_lang]
+            name_sel_expr = "(pt.name ->> %s)"
+            prod_sel_params = [user_lang]
         else:
-            # Standard Char/Text field (Postgres handles casts, but better be safe)
-            # If using ir_translation, Odoo handles it in ORM but in SQL we see the raw value (often English/Source).
-            # For simplicity in pure SQL on old versions without joining ir_translation, we accept raw name.
-            # Ideally utilize `COALESCE(t.value, pt.name)` but that requires joining ir_translation.
-            # For now, let's use the raw column.
             name_expr = "pt.name"
             search_name_expr = "pt.name"
-            name_params = [] # No lang param needed for raw char column
+            name_sel_expr = "pt.name"
+            prod_sel_params = []
 
         # Use unified cost expression for detailed sales
-        # Names of aliases must match the query: po, pol, pp, pt
         cost_expr = self._get_dashboard_cost_expr('po', 'pol', 'pp', 'pt')
 
-        # Now for Name
-        self.env.cr.execute("SELECT data_type FROM information_schema.columns WHERE table_name = 'product_template' AND column_name = 'name'")
-        res_name = self.env.cr.fetchone()
-        is_name_json = res_name and res_name[0] == 'jsonb'
-
-        if is_name_json:
-            name_sel_expr = "(pt.name ->> %s)"
-            name_where_expr = "(pt.name ->> %s)"
-            # We must prepend user_lang to params IF we use this expr.
-            # But wait, search_term params are distinct from SELECT params.
-        else:
-            name_sel_expr = "pt.name"
-            name_where_expr = "pt.name"
-
-        # Construct Params
-        # Search Term
+        # 2. Search Term Filter
         if search_term:
             if is_name_json:
-                 # We need lang for the name extraction in WHERE
-                 where += " AND (" + name_where_expr + " ILIKE %s OR pc.name ILIKE %s)"
-                 params = [user_lang, f"%{search_term}%", f"%{search_term}%"] + params 
-                 # Note: self._build_where_clause returns params. We need to be careful with order.
-                 # Let's rebuild params.
-                 # Actually, simpler to just append and use indexed params? No, %s is positional.
-                 # Let's handle params carefully.
-                 pass
-            else:
-                 where += " AND (" + name_where_expr + " ILIKE %s OR pc.name ILIKE %s)"
-                 # No lang param
-                 pass
-
-        # Adjust params list for search term
-        # _build_where_clause(filters) returns [start_date, end_date...] likely.
-        # We need to insert search params at the end of WHERE clause params.
-        
-        # Let's rewrite param logic for clarity
-        base_where, base_params = self._build_where_clause(filters)
-        query_params = list(base_params) # Copy
-        
-        if search_term:
-            if is_name_json:
-                where_clause = f" AND ({name_where_expr} ILIKE %s OR pc.name ILIKE %s)"
+                base_where += f" AND ({search_name_expr} ILIKE %s OR pc.name ILIKE %s)"
                 query_params.extend([user_lang, f"%{search_term}%", f"%{search_term}%"])
             else:
-                where_clause = f" AND ({name_where_expr} ILIKE %s OR pc.name ILIKE %s)"
+                base_where += f" AND ({search_name_expr} ILIKE %s OR pc.name ILIKE %s)"
                 query_params.extend([f"%{search_term}%", f"%{search_term}%"])
-            base_where += where_clause
 
-        # Category Filter
+        # 3. Category Filter
         if category_ids:
             if isinstance(category_ids, (list, tuple)) and len(category_ids) > 0:
                 base_where += " AND pc.id IN %s"
