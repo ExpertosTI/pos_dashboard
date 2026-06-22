@@ -406,6 +406,22 @@
                     </t>
                 </div>
 
+                <!-- Sales Listing Header and View Mode Toggle -->
+                <div class="px-3 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <h4 class="fw-bold mb-0 text-dark">Desglose de Ventas</h4>
+                        <span class="badge bg-secondary bg-opacity-10 text-dark border"><t t-esc="state.detailed_sales.length"/> items</span>
+                    </div>
+                    <div class="btn-group shadow-sm" role="group" style="border-radius: 8px; overflow: hidden; border: 1px solid #dee2e6;">
+                        <button type="button" t-attf-class="btn btn-sm py-1.5 px-3 fw-bold {{ state.view_mode === 'realtime' ? 'btn-primary' : 'btn-white text-muted' }}" t-on-click="() => this.setViewMode('realtime')" style="border-radius: 0; box-shadow: none;">
+                            <i class="fa fa-th-large me-1"/> Detallado
+                        </button>
+                        <button type="button" t-attf-class="btn btn-sm py-1.5 px-3 fw-bold {{ state.view_mode === 'aggregated' ? 'btn-primary' : 'btn-white text-muted' }}" t-on-click="() => this.setViewMode('aggregated')" style="border-radius: 0; box-shadow: none;">
+                            <i class="fa fa-list-ul me-1"/> Agrupado
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Sales Listing -->
                 <div class="px-3">
                 <t t-if="state.view_mode === 'realtime'">
@@ -477,10 +493,6 @@
                 <t t-else="">
                     <!-- Desktop Table View -->
                     <div class="card shadow-sm border-0 d-none d-lg-block" style="border-radius: 12px; overflow: hidden;">
-                        <div class="card-header bg-white py-3 border-bottom-0 d-flex justify-content-between align-items-center">
-                            <h5 class="card-title fw-bold mb-0 text-dark">Productos Vendidos (Agrupado)</h5>
-                            <span class="badge bg-primary rounded-pill"><t t-esc="state.detailed_sales.length"/> productos</span>
-                        </div>
                         <div class="card-body p-0">
                             <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
                                 <table class="table table-hover mb-0 align-middle sales-table">

@@ -94,7 +94,7 @@ export class PosDashboard extends Component {
       category_summary: [],
       categories: [],
       selectedCategories: [],
-      view_mode: 'aggregated',
+      view_mode: 'realtime',
       recentMonths: this._getRecentMonths(),
       activeDateRange: 'today',
     });
@@ -289,7 +289,7 @@ export class PosDashboard extends Component {
     const filters = this.state.filters;
     const term = this.state.salesSearchTerm;
     const catIds = this.state.selectedCategories;
-    const result = await this.orm.call('pos.order', 'get_detailed_sales', [filters, term, catIds]);
+    const result = await this.orm.call('pos.order', 'get_detailed_sales', [filters, term, catIds, this.state.view_mode]);
     this.state.category_summary = result?.category_summary || [];
     this.state.detailed_sales = result?.products || [];
     this.state.view_mode = result?.view_mode || 'aggregated';
@@ -303,6 +303,10 @@ export class PosDashboard extends Component {
       current.push(catId);
     }
     this.state.selectedCategories = [...current];
+    await this.fetch_sales_data();
+  }
+  async setViewMode(mode) {
+    this.state.view_mode = mode;
     await this.fetch_sales_data();
   }
   selectAllPOS() {

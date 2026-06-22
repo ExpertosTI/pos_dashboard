@@ -974,7 +974,7 @@ class PosOrder(models.Model):
         return categories
 
     @api.model
-    def get_detailed_sales(self, filters=None, search_term=None, category_ids=None):
+    def get_detailed_sales(self, filters=None, search_term=None, category_ids=None, view_mode=None):
         """ Get aggregated sales metrics grouped by Category > Product (Universal Compatibility) """
         user_lang = self.env.user.lang or 'en_US'
         where, params = self._build_where_clause(filters)
@@ -1077,7 +1077,7 @@ class PosOrder(models.Model):
             SELECT 
                 pc.id as category_id,
                 pc.name as category,
-                sum(pol.qty) as qty,
+                sum(pol.qty * COALESCE(uu.factor_inv, 1.0) / COALESCE(tuu.factor_inv, 1.0)) as qty,
                 sum(pol.price_subtotal_incl) as total,
                 sum(pol.price_subtotal_incl - (pol.qty * 
                     CASE WHEN lower(pt.name::text) ilike '%%envio%%' 
@@ -1091,6 +1091,7 @@ class PosOrder(models.Model):
             JOIN product_template pt ON pt.id = pp.product_tmpl_id
             LEFT JOIN product_category pc ON pc.id = pt.categ_id
             LEFT JOIN uom_uom uu ON uu.id = pol.product_uom_id
+            LEFT JOIN uom_uom tuu ON tuu.id = pt.uom_id
             WHERE {{where}}
             GROUP BY pc.id, pc.name
             ORDER BY total DESC
@@ -1107,7 +1108,7 @@ class PosOrder(models.Model):
             category_summary.append({
                 'category_id': r.get('category_id'),
                 'category': r.get('category') or 'Sin Categoría',
-                'qty': r.get('qty') or 0,
+                'qty': f"{r.get('qty') or 0.0:g}",
                 'total': total,
                 'total_str': f"{currency.name} {total:,.2f}",
                 'profit': profit,
@@ -1134,7 +1135,10 @@ class PosOrder(models.Model):
             """
 
         # Determine mode
-        is_realtime = not category_ids
+        if view_mode:
+            is_realtime = (view_mode == 'realtime')
+        else:
+            is_realtime = not category_ids
         
         if is_realtime:
             # Real Time Feed (Individual Lines)
