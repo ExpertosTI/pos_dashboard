@@ -1062,6 +1062,7 @@ class PosOrder(models.Model):
         for r in cat_results:
             profit = r.get('profit') or 0.0
             total = r.get('total') or 0.0
+            pct = (profit / total * 100.0) if total else 0.0
             category_summary.append({
                 'category_id': r.get('category_id'),
                 'category': r.get('category') or 'Sin Categoría',
@@ -1069,7 +1070,7 @@ class PosOrder(models.Model):
                 'total': total,
                 'total_str': f"{currency.name} {total:,.2f}",
                 'profit': profit,
-                'profit_str': f"{currency.name} {profit:,.2f}",
+                'profit_str': f"{currency.name} {profit:,.2f} ({pct:.1f}%)",
             })
 
         # Query 2: Products or Real Time Feed
