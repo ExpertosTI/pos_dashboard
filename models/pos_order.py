@@ -523,6 +523,7 @@ class PosOrder(models.Model):
         lines = self.env['pos.order.line'].search(line_domain)
         profit_by_product = {}
         qty_by_product = {}
+        sales_by_product = {}
         has_sol = 'sale_line_id' in self.env['pos.order.line']._fields
         has_ticket = 'mobile_ticket_id' in self.env['pos.order']._fields
         
@@ -572,6 +573,7 @@ class PosOrder(models.Model):
                 except Exception:
                     qty_ref = ln.qty * (ln.product_uom_id.factor_inv or 1.0)
             qty_by_product[pid] = qty_by_product.get(pid, 0.0) + qty_ref
+            sales_by_product[pid] = sales_by_product.get(pid, 0.0) + ln.price_subtotal_incl
         # Purga final por IDs excluidos o nombres
         if excluded_ids:
             for pid in list(profit_by_product.keys()):
@@ -591,10 +593,12 @@ class PosOrder(models.Model):
             if _name_excluded(prod):
                 continue
             uom_name = prod.uom_id.name if prod.uom_id else ''
+            sales = sales_by_product.get(pid, 0.0)
+            pct = (pr / sales * 100.0) if sales else 0.0
             top_profit_product = {
                 'name': prod.display_name,
                 'qty': f"{qty_by_product.get(pid, 0.0):g} {uom_name}",
-                'profit': pr or 0.0,
+                'profit': f"{fmt_money(pr)} ({pct:.1f}%)",
                 'product_id': pid,
             }
             break
@@ -653,19 +657,21 @@ class PosOrder(models.Model):
         currency_code = self.env.company.currency_id.name
         tmpl_ids = [int(r.get('tmpl_id')) for r in top_products_rows if r.get('tmpl_id')]
         templates_by_id = {t.id: t for t in self.env['product.template'].sudo().browse(tmpl_ids)}
-        top_products = [
-            {
+        top_products = []
+        for r in top_products_rows:
+            profit = r.get('profit') or 0.0
+            amount = r.get('amount') or 0.0
+            pct = (profit / amount * 100.0) if amount else 0.0
+            top_products.append({
                 'name': r.get('product_name') or '',
                 'qty': r.get('qty') or 0.0,
                 'uom_name': templates_by_id.get(int(r.get('tmpl_id'))).uom_id.name if r.get('tmpl_id') and templates_by_id.get(int(r.get('tmpl_id'))) and templates_by_id.get(int(r.get('tmpl_id'))).uom_id else '',
-                'amount': fmt_money(r.get('amount') or 0.0),
-                'amount_raw': float(r.get('amount') or 0.0),
-                'profit': fmt_money(r.get('profit') or 0.0),
-                'profit_raw': float(r.get('profit') or 0.0),
+                'amount': fmt_money(amount),
+                'amount_raw': float(amount),
+                'profit': f"{fmt_money(profit)} ({pct:.1f}%)",
+                'profit_raw': float(profit),
                 'image_url': f"/web/image/product.template/{int(r.get('tmpl_id'))}/image_128" if r.get('tmpl_id') else '',
-            }
-            for r in top_products_rows
-        ]
+            })
         return {
             'payment_details': payments,
             'salesperson': total_sales,
@@ -681,7 +687,7 @@ class PosOrder(models.Model):
             'top_profit_product': {
                 'name': top_profit_product['name'],
                 'qty': top_profit_product['qty'],
-                'profit': fmt_money(top_profit_product['profit']),
+                'profit': top_profit_product['profit'] if isinstance(top_profit_product['profit'], str) else fmt_money(top_profit_product['profit']),
                 'product_id': top_profit_product.get('product_id') if isinstance(top_profit_product, dict) else None,
                 'image_url': (f"/web/image/product.product/{top_profit_product.get('product_id')}/image_128" if isinstance(top_profit_product, dict) and top_profit_product.get('product_id') else ''),
             },
@@ -864,7 +870,8 @@ class PosOrder(models.Model):
         sale_trend_pct = pct(total_sales_amount, y_sales)
         profit_trend_pct = pct(total_profit, y_profit)
         orders_trend_pct = pct(total_orders, len(y_orders))
-        profit_signed = f"{currency.name or ''} {total_profit:,.2f}"
+        pct_margin = (total_profit / total_sales_amount * 100.0) if total_sales_amount else 0.0
+        profit_signed = f"{currency.name or ''} {total_profit:,.2f} ({pct_margin:.1f}%)"
         return {
             'total_sale': fmt(total_sales_amount),
             'total_order_count': total_orders,
@@ -1221,6 +1228,7 @@ class PosOrder(models.Model):
                 else:
                     formatted_time = ""
 
+                pct = (profit / total * 100.0) if total else 0.0
                 products.append({
                     'line_id': r.get('line_id'),
                     'order_id': r.get('order_id'),
@@ -1241,7 +1249,7 @@ class PosOrder(models.Model):
                     'total': total,
                     'total_str': f"{currency.name} {total:,.2f}",
                     'profit': profit,
-                    'profit_str': f"{currency.name} {profit:,.2f}",
+                    'profit_str': f"{currency.name} {profit:,.2f} ({pct:.1f}%)",
                     'messenger': r.get('messenger_name') or '',
                     'delivery_status': r.get('delivery_status') or 'none',
                 })
@@ -1295,6 +1303,7 @@ class PosOrder(models.Model):
                 uom = uoms_by_id.get(r.get('uom_id'))
                 uom_name = uom.name if uom else (prod.uom_id.name if prod and prod.uom_id else '')
                 
+                pct = (profit / total * 100.0) if total else 0.0
                 products.append({
                     'category_id': r.get('category_id'),
                     'category': r.get('category') or 'Sin Categoría',
@@ -1308,7 +1317,7 @@ class PosOrder(models.Model):
                     'total': total,
                     'total_str': f"{currency.name} {total:,.2f}",
                     'profit': profit,
-                    'profit_str': f"{currency.name} {profit:,.2f}",
+                    'profit_str': f"{currency.name} {profit:,.2f} ({pct:.1f}%)",
                 })
             
         return {
