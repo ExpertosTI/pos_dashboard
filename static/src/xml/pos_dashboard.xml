@@ -46,7 +46,7 @@
                              <div class="pos-chips justify-content-end" t-ref="pos_checks">
                                 <t t-foreach="state.pos_configs" t-as="cfg" t-key="cfg.id">
                                     <label class="pos-chip">
-                                        <input type="checkbox" t-att-data-pos="cfg.id" t-on-change="applyFilters"/>
+                                        <input type="checkbox" t-att-data-pos="cfg.id" t-att-checked="state.filters.pos_ids.includes(cfg.id)" t-on-change="applyFilters"/>
                                         <span class="pos-chip-label"><t t-esc="cfg.name"/></span>
                                     </label>
                                 </t>
@@ -55,7 +55,7 @@
                          <div class="d-block d-lg-none w-50">
                             <select class="form-select form-select-sm" multiple="multiple" t-ref="pos_select" t-on-change="applyFilters">
                                 <t t-foreach="state.pos_configs" t-as="cfg" t-key="cfg.id">
-                                    <option t-att-value="cfg.id"><t t-esc="cfg.name"/></option>
+                                    <option t-att-value="cfg.id" t-att-selected="state.filters.pos_ids.includes(cfg.id)"><t t-esc="cfg.name"/></option>
                                 </t>
                             </select>
                          </div>

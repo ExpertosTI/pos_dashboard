@@ -20,16 +20,28 @@
 #
 ################################################################################
 {
-    'name': "Tablero POS",
-    'version': '18.0.1.0.1',
-    'category': 'Point of Sale',
-    'summary': "Tablero detallado para Punto de Venta",
-    'description': "Tablero de POS con métricas, filtros por fechas y gráficos",
-    'author': 'Adderly Marte',
+    'name': "Dashboard POS Avanzado",
+    'version': '18.0.1.4.0',
+    'category': 'Punto de Venta',
+    'summary': """Dashboard avanzado para análisis de ventas POS con métricas en tiempo real""",
+    'description': """
+        Dashboard POS Avanzado
+        ======================
+        
+        Características principales:
+        - Métricas en tiempo real (Ventas, Artículos, Ganancias)
+        - Producto más vendido con imagen
+        - Filtros dinámicos por fecha y configuración POS
+        - Análisis de vendedores y métodos de pago
+        - Gráficos interactivos de ventas
+        - Diseño responsive y moderno
+        - Integración completa con contabilidad
+    """,
+    'author': 'Adderly Marte - Renace Tech',
     'company': 'Renace Tech',
-    'maintainer': 'Adderly Marte',
+    'maintainer': 'Renace Tech',
     'website': "https://renace.tech",
-    'depends': ['hr', 'point_of_sale', 'web'],
+    'depends': ['hr', 'point_of_sale', 'web', 'account'],
     'data': [
         'views/pos_order_views.xml'
     ],
@@ -45,4 +57,5 @@
     'license': "AGPL-3",
     'installable': True,
     'application': False,
+    'auto_install': False,
 }
